@@ -163,7 +163,7 @@ func (st *SubprocessTransport) Connect(ctx context.Context) error {
 
 	// Build command
 	args := st.buildCommand()
-	st.cmd = exec.CommandContext(ctx, args[0], args[1:]...)
+	st.cmd = exec.CommandContext(ctx, args[0], args[1:]...) //nolint:gosec // args are from trusted config
 
 	// Set working directory if specified
 	if st.cfg.workingDir != "" {
@@ -259,7 +259,7 @@ func (st *SubprocessTransport) readMessages(stdout interface{ Read([]byte) (int,
 }
 
 // Send writes data to the subprocess stdin.
-func (st *SubprocessTransport) Send(ctx context.Context, data []byte) error {
+func (st *SubprocessTransport) Send(_ context.Context, data []byte) error {
 	st.mu.RLock()
 	defer st.mu.RUnlock()
 

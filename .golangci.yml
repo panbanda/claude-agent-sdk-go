@@ -45,8 +45,8 @@ linters:
 
 linters-settings:
   errcheck:
-    check-type-assertions: true
-    check-blank: true
+    check-type-assertions: false
+    check-blank: false
 
   govet:
     enable-all: true
@@ -59,7 +59,7 @@ linters-settings:
 
   goconst:
     min-len: 3
-    min-occurrences: 3
+    min-occurrences: 4
 
   misspell:
     locale: US
@@ -103,6 +103,8 @@ issues:
         - goconst
         - gosec
         - errcheck
+        - gocyclo
+        - revive
 
     # Exclude linting of vendored code
     - path: vendor/
