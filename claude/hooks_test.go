@@ -412,4 +412,3 @@ func TestHookCallbackExecution(t *testing.T) {
 		}
 	})
 }
-

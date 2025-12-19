@@ -130,7 +130,7 @@ func (c *Client) parseMessage(data []byte) Message {
 		return c.parseSystemMessage(raw)
 	case "result":
 		return c.parseResultMessage(raw)
-	case "control_request":
+	case MessageTypeControlRequest:
 		c.handleControlRequest(raw)
 		return nil
 	default:
@@ -378,7 +378,7 @@ func (c *Client) sendInitialize(ctx context.Context) error {
 	}
 
 	req := &ControlRequest{
-		Type:      "control_request",
+		Type:      MessageTypeControlRequest,
 		RequestID: generateRequestID(),
 		Request: &ControlRequestBody{
 			Subtype:      ControlSubtypeInitialize,
@@ -479,9 +479,9 @@ func (c *Client) buildHookResponse(output *HookOutput, err error, event HookEven
 
 	if output.Decision != HookDecisionNone {
 		resp.HookSpecificOutput = &HookSpecificOutput{
-			HookEventName:      event,
-			UpdatedInput:       output.UpdatedInput,
-			AdditionalContext:  output.AdditionalContext,
+			HookEventName:     event,
+			UpdatedInput:      output.UpdatedInput,
+			AdditionalContext: output.AdditionalContext,
 		}
 
 		switch output.Decision {
@@ -490,6 +490,8 @@ func (c *Client) buildHookResponse(output *HookOutput, err error, event HookEven
 		case HookDecisionDeny:
 			resp.HookSpecificOutput.PermissionDecision = "deny"
 			resp.HookSpecificOutput.PermissionDecisionReason = output.Reason
+		case HookDecisionNone:
+			// Already handled by outer if check
 		}
 	}
 

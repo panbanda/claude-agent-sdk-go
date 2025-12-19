@@ -8,6 +8,9 @@ import (
 // ControlRequestSubtype identifies the type of control request.
 type ControlRequestSubtype string
 
+// MessageTypeControlRequest is the type field value for control requests.
+const MessageTypeControlRequest = "control_request"
+
 const (
 	// ControlSubtypeInterrupt sends an interrupt signal.
 	ControlSubtypeInterrupt ControlRequestSubtype = "interrupt"
@@ -133,7 +136,7 @@ func generateRequestID() string {
 // NewInterruptRequest creates a new interrupt control request.
 func NewInterruptRequest() *ControlRequest {
 	return &ControlRequest{
-		Type:      "control_request",
+		Type:      MessageTypeControlRequest,
 		RequestID: generateRequestID(),
 		Request: &ControlRequestBody{
 			Subtype: ControlSubtypeInterrupt,
@@ -152,14 +155,15 @@ func NewInitializeRequest(hooks map[HookEvent][]HookDefinition) *ControlRequest 
 				HookCallbackIDs: []string{}, // Empty for direct use
 			}
 			if def.Timeout > 0 {
-				initDef.Timeout = &def.Timeout
+				timeout := def.Timeout // Copy to avoid memory aliasing
+				initDef.Timeout = &timeout
 			}
 			initHooks[event] = append(initHooks[event], initDef)
 		}
 	}
 
 	return &ControlRequest{
-		Type:      "control_request",
+		Type:      MessageTypeControlRequest,
 		RequestID: generateRequestID(),
 		Request: &ControlRequestBody{
 			Subtype:      ControlSubtypeInitialize,
@@ -171,7 +175,7 @@ func NewInitializeRequest(hooks map[HookEvent][]HookDefinition) *ControlRequest 
 // NewSetPermissionModeRequest creates a set permission mode request.
 func NewSetPermissionModeRequest(mode PermissionMode) *ControlRequest {
 	return &ControlRequest{
-		Type:      "control_request",
+		Type:      MessageTypeControlRequest,
 		RequestID: generateRequestID(),
 		Request: &ControlRequestBody{
 			Subtype: ControlSubtypeSetPermissionMode,
