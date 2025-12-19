@@ -5,6 +5,7 @@ tasks:
     desc: Install development dependencies
     cmds:
       - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+      - lefthook install
 
   tidy:
     desc: Format code and tidy dependencies
