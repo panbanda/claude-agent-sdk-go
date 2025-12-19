@@ -1028,3 +1028,241 @@ func TestBuildCommand_WithForkSession(t *testing.T) {
 		}
 	})
 }
+
+func TestBuildCommand_WithAgents(t *testing.T) {
+	t.Run("includes agent definitions as JSON", func(t *testing.T) {
+		cfg := &config{
+			agents: map[string]AgentDefinition{
+				"code-reviewer": {
+					Description: "Reviews code",
+					Prompt:      "You are a code reviewer",
+					Tools:       []string{"Read", "Grep"},
+					Model:       "sonnet",
+				},
+			},
+		}
+		st := &SubprocessTransport{
+			cliPath: "/usr/bin/claude",
+			cfg:     cfg,
+		}
+
+		cmd := st.buildCommand()
+
+		containsAgentFlag := false
+		for i, arg := range cmd {
+			if arg == "--agent-definition" && i+1 < len(cmd) {
+				containsAgentFlag = true
+				// Verify it contains JSON
+				jsonStr := cmd[i+1]
+				if len(jsonStr) == 0 || jsonStr[0] != '{' {
+					t.Errorf("agent definition should be JSON, got %q", jsonStr)
+				}
+				break
+			}
+		}
+		if !containsAgentFlag {
+			t.Errorf("command should contain --agent-definition, got %v", cmd)
+		}
+	})
+
+	t.Run("includes multiple agent definitions", func(t *testing.T) {
+		cfg := &config{
+			agents: map[string]AgentDefinition{
+				"agent1": {Description: "Agent 1", Prompt: "Prompt 1"},
+				"agent2": {Description: "Agent 2", Prompt: "Prompt 2"},
+			},
+		}
+		st := &SubprocessTransport{
+			cliPath: "/usr/bin/claude",
+			cfg:     cfg,
+		}
+
+		cmd := st.buildCommand()
+
+		agentCount := 0
+		for _, arg := range cmd {
+			if arg == "--agent-definition" {
+				agentCount++
+			}
+		}
+		if agentCount != 2 {
+			t.Errorf("command should contain 2 --agent-definition flags, got %d", agentCount)
+		}
+	})
+
+	t.Run("no agent flags when no agents", func(t *testing.T) {
+		cfg := &config{}
+		st := &SubprocessTransport{
+			cliPath: "/usr/bin/claude",
+			cfg:     cfg,
+		}
+
+		cmd := st.buildCommand()
+
+		for _, arg := range cmd {
+			if arg == "--agent-definition" {
+				t.Errorf("command should not contain --agent-definition when no agents configured")
+			}
+		}
+	})
+}
+
+func TestBuildCommand_WithSettingSources(t *testing.T) {
+	t.Run("includes single setting source", func(t *testing.T) {
+		cfg := &config{
+			settingSources: []SettingSource{SettingSourceUser},
+		}
+		st := &SubprocessTransport{
+			cliPath: "/usr/bin/claude",
+			cfg:     cfg,
+		}
+
+		cmd := st.buildCommand()
+
+		containsSettingSource := false
+		for i, arg := range cmd {
+			if arg == "--setting-source" && i+1 < len(cmd) && cmd[i+1] == "user" {
+				containsSettingSource = true
+				break
+			}
+		}
+		if !containsSettingSource {
+			t.Errorf("command should contain --setting-source user, got %v", cmd)
+		}
+	})
+
+	t.Run("includes multiple setting sources", func(t *testing.T) {
+		cfg := &config{
+			settingSources: []SettingSource{
+				SettingSourceUser,
+				SettingSourceProject,
+				SettingSourceLocal,
+			},
+		}
+		st := &SubprocessTransport{
+			cliPath: "/usr/bin/claude",
+			cfg:     cfg,
+		}
+
+		cmd := st.buildCommand()
+
+		sourceCount := 0
+		for _, arg := range cmd {
+			if arg == "--setting-source" {
+				sourceCount++
+			}
+		}
+		if sourceCount != 3 {
+			t.Errorf("command should contain 3 --setting-source flags, got %d", sourceCount)
+		}
+
+		// Verify order
+		foundUser := false
+		foundProject := false
+		foundLocal := false
+		for i, arg := range cmd {
+			if arg == "--setting-source" && i+1 < len(cmd) {
+				switch cmd[i+1] {
+				case "user":
+					foundUser = true
+				case "project":
+					foundProject = true
+				case "local":
+					foundLocal = true
+				}
+			}
+		}
+		if !foundUser || !foundProject || !foundLocal {
+			t.Errorf("command should contain all three setting sources")
+		}
+	})
+
+	t.Run("no setting source flags when empty", func(t *testing.T) {
+		cfg := &config{}
+		st := &SubprocessTransport{
+			cliPath: "/usr/bin/claude",
+			cfg:     cfg,
+		}
+
+		cmd := st.buildCommand()
+
+		for _, arg := range cmd {
+			if arg == "--setting-source" {
+				t.Errorf("command should not contain --setting-source when no sources configured")
+			}
+		}
+	})
+}
+
+func TestBuildCommand_WithPlugins(t *testing.T) {
+	t.Run("includes single plugin as JSON", func(t *testing.T) {
+		cfg := &config{
+			plugins: []PluginConfig{
+				{Type: "local", Path: "/path/to/plugin"},
+			},
+		}
+		st := &SubprocessTransport{
+			cliPath: "/usr/bin/claude",
+			cfg:     cfg,
+		}
+
+		cmd := st.buildCommand()
+
+		containsPluginFlag := false
+		for i, arg := range cmd {
+			if arg == "--plugin" && i+1 < len(cmd) {
+				containsPluginFlag = true
+				// Verify it contains JSON
+				jsonStr := cmd[i+1]
+				if len(jsonStr) == 0 || jsonStr[0] != '{' {
+					t.Errorf("plugin should be JSON, got %q", jsonStr)
+				}
+				break
+			}
+		}
+		if !containsPluginFlag {
+			t.Errorf("command should contain --plugin, got %v", cmd)
+		}
+	})
+
+	t.Run("includes multiple plugins", func(t *testing.T) {
+		cfg := &config{
+			plugins: []PluginConfig{
+				{Type: "local", Path: "/path/to/plugin1"},
+				{Type: "local", Path: "/path/to/plugin2"},
+			},
+		}
+		st := &SubprocessTransport{
+			cliPath: "/usr/bin/claude",
+			cfg:     cfg,
+		}
+
+		cmd := st.buildCommand()
+
+		pluginCount := 0
+		for _, arg := range cmd {
+			if arg == "--plugin" {
+				pluginCount++
+			}
+		}
+		if pluginCount != 2 {
+			t.Errorf("command should contain 2 --plugin flags, got %d", pluginCount)
+		}
+	})
+
+	t.Run("no plugin flags when no plugins", func(t *testing.T) {
+		cfg := &config{}
+		st := &SubprocessTransport{
+			cliPath: "/usr/bin/claude",
+			cfg:     cfg,
+		}
+
+		cmd := st.buildCommand()
+
+		for _, arg := range cmd {
+			if arg == "--plugin" {
+				t.Errorf("command should not contain --plugin when no plugins configured")
+			}
+		}
+	})
+}

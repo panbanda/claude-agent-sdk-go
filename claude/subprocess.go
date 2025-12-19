@@ -153,7 +153,7 @@ func (st *SubprocessTransport) addSessionOptions(cmd []string, cfg *config) []st
 	return cmd
 }
 
-// addAdvancedOptions adds extra args, directories, settings, and betas.
+// addAdvancedOptions adds extra args, directories, settings, betas, agents, and plugins.
 func (st *SubprocessTransport) addAdvancedOptions(cmd []string, cfg *config) []string {
 	for key, value := range cfg.extraArgs {
 		if value == "" {
@@ -173,6 +173,37 @@ func (st *SubprocessTransport) addAdvancedOptions(cmd []string, cfg *config) []s
 	if len(cfg.betas) > 0 {
 		cmd = append(cmd, "--betas", strings.Join(cfg.betas, ","))
 	}
+
+	// Add agent definitions as JSON
+	for name, agent := range cfg.agents {
+		agentJSON, err := json.Marshal(map[string]any{
+			"name":        name,
+			"description": agent.Description,
+			"prompt":      agent.Prompt,
+			"tools":       agent.Tools,
+			"model":       agent.Model,
+		})
+		if err == nil {
+			cmd = append(cmd, "--agent-definition", string(agentJSON))
+		}
+	}
+
+	// Add setting sources
+	for _, source := range cfg.settingSources {
+		cmd = append(cmd, "--setting-source", string(source))
+	}
+
+	// Add plugins
+	for _, plugin := range cfg.plugins {
+		pluginJSON, err := json.Marshal(map[string]any{
+			"type": plugin.Type,
+			"path": plugin.Path,
+		})
+		if err == nil {
+			cmd = append(cmd, "--plugin", string(pluginJSON))
+		}
+	}
+
 	return cmd
 }
 

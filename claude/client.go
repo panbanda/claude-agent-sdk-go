@@ -124,7 +124,7 @@ func (c *Client) parseMessage(data []byte) Message {
 	msgType, _ := raw["type"].(string)
 
 	switch msgType {
-	case "user":
+	case "user": //nolint:goconst // message type string, not SettingSourceUser constant
 		return c.parseUserMessage(raw)
 	case "assistant":
 		return c.parseAssistantMessage(raw)

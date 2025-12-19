@@ -67,3 +67,43 @@ type SandboxIgnoreViolations struct {
 	// Network hosts for which violations should be ignored.
 	Network []string `json:"network,omitempty"`
 }
+
+// AgentDefinition defines a custom agent with specific capabilities.
+type AgentDefinition struct {
+	// Description is a short description of what the agent does.
+	Description string
+
+	// Prompt is the system prompt for the agent.
+	Prompt string
+
+	// Tools is the list of tools the agent can use.
+	// If nil, the agent uses default tools.
+	Tools []string
+
+	// Model specifies the model to use: "sonnet", "opus", "haiku", or "inherit".
+	// If empty, inherits from parent.
+	Model string
+}
+
+// SettingSource specifies where to load settings from.
+type SettingSource string
+
+const (
+	// SettingSourceUser loads global user settings (~/.claude/).
+	SettingSourceUser SettingSource = "user"
+
+	// SettingSourceProject loads project-level settings (.claude/ in project).
+	SettingSourceProject SettingSource = "project"
+
+	// SettingSourceLocal loads local gitignored settings (.claude-local/).
+	SettingSourceLocal SettingSource = "local"
+)
+
+// PluginConfig configures a plugin to load.
+type PluginConfig struct {
+	// Type is the plugin type. Currently only "local" is supported.
+	Type string
+
+	// Path is the path to the plugin directory.
+	Path string
+}

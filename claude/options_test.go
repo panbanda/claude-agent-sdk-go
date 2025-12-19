@@ -381,6 +381,144 @@ func TestWithCanUseTool(t *testing.T) {
 	})
 }
 
+func TestWithAgents(t *testing.T) {
+	t.Run("sets agents", func(t *testing.T) {
+		agents := map[string]AgentDefinition{
+			"code-reviewer": {
+				Description: "Reviews code",
+				Prompt:      "You are a code reviewer",
+				Tools:       []string{"Read", "Grep"},
+				Model:       "sonnet",
+			},
+			"doc-writer": {
+				Description: "Writes docs",
+				Prompt:      "You are a technical writer",
+				Tools:       []string{"Read", "Write", "Edit"},
+			},
+		}
+
+		cfg := &config{}
+		applyOptions(cfg, WithAgents(agents))
+
+		if len(cfg.agents) != 2 {
+			t.Fatalf("agents length = %d, want 2", len(cfg.agents))
+		}
+
+		reviewer := cfg.agents["code-reviewer"]
+		if reviewer.Description != "Reviews code" {
+			t.Errorf("code-reviewer.Description = %q, want %q", reviewer.Description, "Reviews code")
+		}
+		if reviewer.Prompt != "You are a code reviewer" {
+			t.Errorf("code-reviewer.Prompt = %q, want %q", reviewer.Prompt, "You are a code reviewer")
+		}
+		if len(reviewer.Tools) != 2 {
+			t.Fatalf("code-reviewer.Tools length = %d, want 2", len(reviewer.Tools))
+		}
+		if reviewer.Model != "sonnet" {
+			t.Errorf("code-reviewer.Model = %q, want %q", reviewer.Model, "sonnet")
+		}
+
+		writer := cfg.agents["doc-writer"]
+		if writer.Description != "Writes docs" {
+			t.Errorf("doc-writer.Description = %q, want %q", writer.Description, "Writes docs")
+		}
+	})
+
+	t.Run("empty agents map", func(t *testing.T) {
+		cfg := &config{}
+		applyOptions(cfg, WithAgents(map[string]AgentDefinition{}))
+
+		if len(cfg.agents) != 0 {
+			t.Errorf("agents length = %d, want 0", len(cfg.agents))
+		}
+	})
+}
+
+func TestWithSettingSources(t *testing.T) {
+	t.Run("sets single source", func(t *testing.T) {
+		cfg := &config{}
+		applyOptions(cfg, WithSettingSources(SettingSourceUser))
+
+		if len(cfg.settingSources) != 1 {
+			t.Fatalf("settingSources length = %d, want 1", len(cfg.settingSources))
+		}
+		if cfg.settingSources[0] != SettingSourceUser {
+			t.Errorf("settingSources[0] = %q, want %q", cfg.settingSources[0], SettingSourceUser)
+		}
+	})
+
+	t.Run("sets multiple sources", func(t *testing.T) {
+		cfg := &config{}
+		applyOptions(cfg, WithSettingSources(SettingSourceUser, SettingSourceProject, SettingSourceLocal))
+
+		if len(cfg.settingSources) != 3 {
+			t.Fatalf("settingSources length = %d, want 3", len(cfg.settingSources))
+		}
+		if cfg.settingSources[0] != SettingSourceUser {
+			t.Errorf("settingSources[0] = %q, want %q", cfg.settingSources[0], SettingSourceUser)
+		}
+		if cfg.settingSources[1] != SettingSourceProject {
+			t.Errorf("settingSources[1] = %q, want %q", cfg.settingSources[1], SettingSourceProject)
+		}
+		if cfg.settingSources[2] != SettingSourceLocal {
+			t.Errorf("settingSources[2] = %q, want %q", cfg.settingSources[2], SettingSourceLocal)
+		}
+	})
+
+	t.Run("empty sources", func(t *testing.T) {
+		cfg := &config{}
+		applyOptions(cfg, WithSettingSources())
+
+		if len(cfg.settingSources) != 0 {
+			t.Errorf("settingSources length = %d, want 0", len(cfg.settingSources))
+		}
+	})
+}
+
+func TestWithPlugins(t *testing.T) {
+	t.Run("sets single plugin", func(t *testing.T) {
+		cfg := &config{}
+		applyOptions(cfg, WithPlugins(PluginConfig{Type: "local", Path: "/path/to/plugin"}))
+
+		if len(cfg.plugins) != 1 {
+			t.Fatalf("plugins length = %d, want 1", len(cfg.plugins))
+		}
+		if cfg.plugins[0].Type != "local" {
+			t.Errorf("plugins[0].Type = %q, want %q", cfg.plugins[0].Type, "local")
+		}
+		if cfg.plugins[0].Path != "/path/to/plugin" {
+			t.Errorf("plugins[0].Path = %q, want %q", cfg.plugins[0].Path, "/path/to/plugin")
+		}
+	})
+
+	t.Run("sets multiple plugins", func(t *testing.T) {
+		cfg := &config{}
+		applyOptions(cfg, WithPlugins(
+			PluginConfig{Type: "local", Path: "/path/to/plugin1"},
+			PluginConfig{Type: "local", Path: "/path/to/plugin2"},
+		))
+
+		if len(cfg.plugins) != 2 {
+			t.Fatalf("plugins length = %d, want 2", len(cfg.plugins))
+		}
+		if cfg.plugins[0].Path != "/path/to/plugin1" {
+			t.Errorf("plugins[0].Path = %q, want %q", cfg.plugins[0].Path, "/path/to/plugin1")
+		}
+		if cfg.plugins[1].Path != "/path/to/plugin2" {
+			t.Errorf("plugins[1].Path = %q, want %q", cfg.plugins[1].Path, "/path/to/plugin2")
+		}
+	})
+
+	t.Run("empty plugins", func(t *testing.T) {
+		cfg := &config{}
+		applyOptions(cfg, WithPlugins())
+
+		if len(cfg.plugins) != 0 {
+			t.Errorf("plugins length = %d, want 0", len(cfg.plugins))
+		}
+	})
+}
+
 // Helper to apply options
 func applyOptions(cfg *config, opts ...Option) {
 	for _, opt := range opts {
