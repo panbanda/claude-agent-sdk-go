@@ -56,7 +56,7 @@ type ControlRequestBody struct {
 
 	// For hook_callback
 	CallbackID string `json:"callback_id,omitempty"`
-	HookInput  any    `json:"input,omitempty"`
+	HookInput  any    `json:"hook_input,omitempty"`
 	ToolUseID  string `json:"tool_use_id,omitempty"`
 
 	// For mcp_message
@@ -118,7 +118,7 @@ type HookSpecificOutput struct {
 // generateRequestID creates a unique request ID.
 func generateRequestID() string {
 	bytes := make([]byte, 8)
-	rand.Read(bytes)
+	_, _ = rand.Read(bytes)
 	return "req-" + hex.EncodeToString(bytes)
 }
 

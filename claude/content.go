@@ -2,12 +2,12 @@ package claude
 
 // ContentBlockKind discriminates the type of content in a ContentBlock.
 //
-// Design rationale: Using a single struct with Kind discriminator (Genkit pattern)
+// Design rationale: using a single struct with Kind discriminator (Genkit pattern)
 // rather than separate types with an interface because:
-// - JSON marshaling is trivial with struct tags
-// - All 4 variants have similar sizes, minimal memory waste
-// - Avoids custom UnmarshalJSON complexity for discriminated unions
-// - Helper methods (IsText, IsToolUse, etc.) provide type checking
+//   - JSON marshaling is trivial with struct tags.
+//   - All 4 variants have similar sizes, minimal memory waste.
+//   - Avoids custom UnmarshalJSON complexity for discriminated unions.
+//   - Helper methods (IsText, IsToolUse, etc.) provide type checking.
 type ContentBlockKind int8
 
 const (

@@ -1,0 +1,29 @@
+version: '3'
+
+tasks:
+  setup:
+    desc: Install development dependencies
+    cmds:
+      - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
+  tidy:
+    desc: Format code and tidy dependencies
+    cmds:
+      - go fmt ./...
+      - go mod tidy
+
+  lint:
+    desc: Run linters
+    cmds:
+      - golangci-lint run
+
+  test:
+    desc: Run tests and linters
+    cmds:
+      - go test -race ./...
+      - task: lint
+
+  build:
+    desc: Build the project
+    cmds:
+      - go build -v ./...

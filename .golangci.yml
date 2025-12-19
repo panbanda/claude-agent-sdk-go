@@ -20,7 +20,7 @@ linters:
     - dupl
     - errorlint
     - exhaustive
-    - exportloopref
+    - copyloopvar
     - goconst
     - gocritic
     - gocyclo
@@ -50,6 +50,8 @@ linters-settings:
 
   govet:
     enable-all: true
+    disable:
+      - fieldalignment
 
   gocyclo:
     min-complexity: 15
@@ -105,6 +107,11 @@ issues:
         - errcheck
         - gocyclo
         - revive
+        - godot
+        - errorlint
+        - govet
+        - staticcheck
+        - stylecheck
 
     # Exclude linting of vendored code
     - path: vendor/

@@ -312,7 +312,7 @@ func (st *SubprocessTransport) Close() error {
 
 	// Kill the process if still running
 	if st.cmd != nil && st.cmd.Process != nil {
-		st.cmd.Process.Kill()
+		_ = st.cmd.Process.Kill()
 	}
 
 	return nil
