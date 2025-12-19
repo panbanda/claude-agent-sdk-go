@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  The official Go SDK for building AI agents with <a href="https://docs.anthropic.com/en/docs/claude-code">Claude Code</a>.<br>
+  A Go SDK for building AI agents with <a href="https://docs.anthropic.com/en/docs/claude-code">Claude Code</a>.<br>
   A clean, idiomatic Go interface for interacting with Claude's agentic capabilities.
 </p>
 
@@ -373,4 +373,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Related Projects
 
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) - The CLI this SDK wraps
-- [claude-agent-sdk-python](https://github.com/anthropics/claude-agent-sdk-python) - Official Python SDK
+- [claude-agent-sdk-python](https://github.com/anthropics/claude-agent-sdk-python) - Python SDK (Anthropic)
