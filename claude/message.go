@@ -4,11 +4,11 @@ package claude
 //
 // Design rationale: Using an interface with separate concrete types rather than
 // a single struct with a discriminator because:
-// - Message variants have very different shapes (ResultMessage has ~10 fields
-//   that UserMessage doesn't need)
-// - Interface provides compile-time type safety via type switches
-// - More memory efficient (each type only has its relevant fields)
-// - IDE autocomplete only shows relevant fields after type assertion
+//   - Message variants have very different shapes (ResultMessage has ~10 fields
+//     that UserMessage doesn't need)
+//   - Interface provides compile-time type safety via type switches
+//   - More memory efficient (each type only has its relevant fields)
+//   - IDE autocomplete only shows relevant fields after type assertion
 //
 // Use type switch to handle different message types:
 //

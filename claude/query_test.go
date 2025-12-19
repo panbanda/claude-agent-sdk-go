@@ -21,12 +21,12 @@ func TestQuery(t *testing.T) {
 			},
 		}
 		resultMsg := map[string]any{
-			"type":          "result",
-			"subtype":       "success",
-			"duration_ms":   1000,
-			"is_error":      false,
-			"num_turns":     1,
-			"session_id":    "test-session",
+			"type":           "result",
+			"subtype":        "success",
+			"duration_ms":    1000,
+			"is_error":       false,
+			"num_turns":      1,
+			"session_id":     "test-session",
 			"total_cost_usd": 0.001,
 		}
 

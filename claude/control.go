@@ -33,9 +33,9 @@ const (
 
 // ControlRequest is a message sent from SDK to CLI.
 type ControlRequest struct {
-	Type      string                `json:"type"`
-	RequestID string                `json:"request_id"`
-	Request   *ControlRequestBody   `json:"request"`
+	Type      string              `json:"type"`
+	RequestID string              `json:"request_id"`
+	Request   *ControlRequestBody `json:"request"`
 }
 
 // ControlRequestBody holds the request details.
@@ -55,9 +55,9 @@ type ControlRequestBody struct {
 	Mode string `json:"mode,omitempty"`
 
 	// For hook_callback
-	CallbackID     string `json:"callback_id,omitempty"`
-	HookInput      any    `json:"input,omitempty"`
-	ToolUseID      string `json:"tool_use_id,omitempty"`
+	CallbackID string `json:"callback_id,omitempty"`
+	HookInput  any    `json:"input,omitempty"`
+	ToolUseID  string `json:"tool_use_id,omitempty"`
 
 	// For mcp_message
 	ServerName string `json:"server_name,omitempty"`
@@ -97,12 +97,12 @@ type PermissionResultResponse struct {
 
 // HookCallbackResponse is the response to a hook_callback request.
 type HookCallbackResponse struct {
-	Continue           bool               `json:"continue"`
-	SuppressOutput     bool               `json:"suppressOutput,omitempty"`
-	StopReason         string             `json:"stopReason,omitempty"`
-	Decision           string             `json:"decision,omitempty"`
-	SystemMessage      string             `json:"systemMessage,omitempty"`
-	Reason             string             `json:"reason,omitempty"`
+	Continue           bool                `json:"continue"`
+	SuppressOutput     bool                `json:"suppressOutput,omitempty"`
+	StopReason         string              `json:"stopReason,omitempty"`
+	Decision           string              `json:"decision,omitempty"`
+	SystemMessage      string              `json:"systemMessage,omitempty"`
+	Reason             string              `json:"reason,omitempty"`
 	HookSpecificOutput *HookSpecificOutput `json:"hookSpecificOutput,omitempty"`
 }
 

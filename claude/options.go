@@ -29,8 +29,8 @@ type config struct {
 	fallbackModel string
 
 	// Limits
-	maxTurns      int
-	maxBudgetUSD  float64
+	maxTurns     int
+	maxBudgetUSD float64
 
 	// Permissions
 	permissionMode PermissionMode
@@ -192,9 +192,9 @@ func HookTimeout(d time.Duration) HookOption {
 
 // hookMatcher pairs a pattern with callbacks and timeout.
 type hookMatcher struct {
-	matcher  string
-	hooks    []any // Hook function (type depends on event)
-	timeout  time.Duration
+	matcher string
+	hooks   []any // Hook function (type depends on event)
+	timeout time.Duration
 }
 
 // HookEvent represents the type of hook event.

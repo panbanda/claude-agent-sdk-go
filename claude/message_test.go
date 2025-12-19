@@ -255,12 +255,12 @@ func TestMessageJSON(t *testing.T) {
 
 	t.Run("marshal ResultMessage", func(t *testing.T) {
 		msg := &ResultMessage{
-			Subtype:      "success",
-			SessionID:    "sess-1",
-			TotalCostUSD: 0.01,
-			DurationMS:   1000,
+			Subtype:       "success",
+			SessionID:     "sess-1",
+			TotalCostUSD:  0.01,
+			DurationMS:    1000,
 			DurationAPIMS: 800,
-			NumTurns:     1,
+			NumTurns:      1,
 		}
 		data, err := json.Marshal(msg)
 		if err != nil {
