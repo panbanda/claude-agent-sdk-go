@@ -373,4 +373,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Related Projects
 
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) - The CLI this SDK wraps
-- [claude-agent-sdk-python](https://github.com/anthropics/claude-agent-sdk-python) - Python SDK (Anthropic)
+- [claude-agent-sdk-python](https://github.com/anthropics/claude-agent-sdk-python) - Official Python SDK
