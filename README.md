@@ -1,5 +1,9 @@
 # Claude Agent SDK for Go
 
+<p align="center">
+  <img src="assets/header-image.jpg" alt="Claude Agent SDK for Go" width="100%">
+</p>
+
 [![Go Reference](https://pkg.go.dev/badge/github.com/panbanda/claude-agent-sdk-go.svg)](https://pkg.go.dev/github.com/panbanda/claude-agent-sdk-go)
 [![Go Report Card](https://goreportcard.com/badge/github.com/panbanda/claude-agent-sdk-go)](https://goreportcard.com/report/github.com/panbanda/claude-agent-sdk-go)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
