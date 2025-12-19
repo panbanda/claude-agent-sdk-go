@@ -63,6 +63,26 @@ func TestProcessError(t *testing.T) {
 		}
 	})
 
+	t.Run("error message without stderr", func(t *testing.T) {
+		err := &ProcessError{
+			ExitCode: 127,
+			Stderr:   "",
+		}
+
+		msg := err.Error()
+		if msg == "" {
+			t.Error("Error() should not return empty string")
+		}
+		// Should mention exit code
+		if !contains(msg, "127") {
+			t.Errorf("Error() = %q, should contain exit code 127", msg)
+		}
+		// Should not mention stderr since it's empty
+		if contains(msg, "something failed") {
+			t.Errorf("Error() = %q, should not contain stderr when empty", msg)
+		}
+	})
+
 	t.Run("implements error interface", func(t *testing.T) {
 		var err error = &ProcessError{ExitCode: 1}
 		if err == nil {

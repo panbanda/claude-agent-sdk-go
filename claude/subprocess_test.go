@@ -394,3 +394,258 @@ func TestNewSubprocessTransport(t *testing.T) {
 		}
 	})
 }
+
+func TestSubprocessTransport_Send(t *testing.T) {
+	t.Run("returns error when not ready", func(t *testing.T) {
+		cfg := &config{}
+		st := NewSubprocessTransport(cfg)
+
+		err := st.Send(context.Background(), []byte("test"))
+
+		if err != ErrNotConnected {
+			t.Errorf("Send() error = %v, want %v", err, ErrNotConnected)
+		}
+	})
+
+	t.Run("returns error when stdin is nil", func(t *testing.T) {
+		cfg := &config{}
+		st := NewSubprocessTransport(cfg)
+		st.ready = true
+		st.stdin = nil
+
+		err := st.Send(context.Background(), []byte("test"))
+
+		if err != ErrNotConnected {
+			t.Errorf("Send() error = %v, want %v", err, ErrNotConnected)
+		}
+	})
+}
+
+func TestSubprocessTransport_Close(t *testing.T) {
+	t.Run("returns nil when not ready", func(t *testing.T) {
+		cfg := &config{}
+		st := NewSubprocessTransport(cfg)
+
+		err := st.Close()
+
+		if err != nil {
+			t.Errorf("Close() error = %v, want nil", err)
+		}
+	})
+
+	t.Run("closes stdin when ready", func(t *testing.T) {
+		cfg := &config{}
+		st := NewSubprocessTransport(cfg)
+		st.ready = true
+
+		// Create a pipe for stdin
+		r, w, _ := os.Pipe()
+		st.stdin = w
+		defer r.Close()
+
+		err := st.Close()
+
+		if err != nil {
+			t.Errorf("Close() error = %v, want nil", err)
+		}
+		if st.ready {
+			t.Error("ready should be false after Close()")
+		}
+		if st.stdin != nil {
+			t.Error("stdin should be nil after Close()")
+		}
+	})
+
+	t.Run("safe to call multiple times", func(t *testing.T) {
+		cfg := &config{}
+		st := NewSubprocessTransport(cfg)
+		st.ready = true
+
+		r, w, _ := os.Pipe()
+		st.stdin = w
+		defer r.Close()
+
+		_ = st.Close()
+		err := st.Close()
+
+		if err != nil {
+			t.Errorf("Close() second call error = %v, want nil", err)
+		}
+	})
+}
+
+func TestSubprocessTransport_BuildCommand_AllOptions(t *testing.T) {
+	t.Run("includes fallback model flag", func(t *testing.T) {
+		cfg := &config{fallbackModel: "claude-haiku-3-5"}
+		st := &SubprocessTransport{
+			cliPath: "/usr/bin/claude",
+			cfg:     cfg,
+		}
+
+		cmd := st.buildCommand()
+
+		containsFallbackModel := false
+		for i, arg := range cmd {
+			if arg == "--fallback-model" && i+1 < len(cmd) && cmd[i+1] == "claude-haiku-3-5" {
+				containsFallbackModel = true
+				break
+			}
+		}
+		if !containsFallbackModel {
+			t.Errorf("command should contain --fallback-model claude-haiku-3-5, got %v", cmd)
+		}
+	})
+
+	t.Run("includes max thinking tokens flag", func(t *testing.T) {
+		cfg := &config{maxThinkingTokens: 50000}
+		st := &SubprocessTransport{
+			cliPath: "/usr/bin/claude",
+			cfg:     cfg,
+		}
+
+		cmd := st.buildCommand()
+
+		containsMaxThinking := false
+		for i, arg := range cmd {
+			if arg == "--max-thinking-tokens" && i+1 < len(cmd) && cmd[i+1] == "50000" {
+				containsMaxThinking = true
+				break
+			}
+		}
+		if !containsMaxThinking {
+			t.Errorf("command should contain --max-thinking-tokens 50000, got %v", cmd)
+		}
+	})
+}
+
+func TestSubprocessTransport_ReadMessages(t *testing.T) {
+	t.Run("reads messages from reader", func(t *testing.T) {
+		cfg := &config{}
+		st := NewSubprocessTransport(cfg)
+
+		// Create a pipe to simulate stdout
+		r, w, _ := os.Pipe()
+
+		// Write test messages
+		go func() {
+			w.Write([]byte(`{"type":"assistant"}`))
+			w.Write([]byte("\n"))
+			w.Write([]byte(`{"type":"result"}`))
+			w.Write([]byte("\n"))
+			w.Close()
+		}()
+
+		// Read messages
+		go st.readMessages(r)
+
+		// Collect messages
+		var messages [][]byte
+		for msg := range st.Messages() {
+			messages = append(messages, msg)
+		}
+
+		if len(messages) != 2 {
+			t.Fatalf("got %d messages, want 2", len(messages))
+		}
+	})
+
+	t.Run("skips empty lines", func(t *testing.T) {
+		cfg := &config{}
+		st := NewSubprocessTransport(cfg)
+
+		r, w, _ := os.Pipe()
+
+		go func() {
+			w.Write([]byte("\n"))
+			w.Write([]byte(`{"type":"test"}`))
+			w.Write([]byte("\n"))
+			w.Write([]byte("\n"))
+			w.Close()
+		}()
+
+		go st.readMessages(r)
+
+		var messages [][]byte
+		for msg := range st.Messages() {
+			messages = append(messages, msg)
+		}
+
+		if len(messages) != 1 {
+			t.Fatalf("got %d messages, want 1 (empty lines should be skipped)", len(messages))
+		}
+	})
+}
+
+func TestFindCLI_FallbackLocations(t *testing.T) {
+	t.Run("checks fallback locations when not in PATH", func(t *testing.T) {
+		// Save original PATH
+		origPath := os.Getenv("PATH")
+		os.Setenv("PATH", "/nonexistent")
+		defer os.Setenv("PATH", origPath)
+
+		// FindCLI should check fallback locations
+		// It may find an existing claude binary (e.g., /usr/local/bin/claude)
+		// or we can create one to test
+		home, _ := os.UserHomeDir()
+
+		// Build the list of expected fallback locations
+		fallbackLocations := []string{
+			filepath.Join(home, ".npm-global", "bin", "claude"),
+			"/usr/local/bin/claude",
+			filepath.Join(home, ".local", "bin", "claude"),
+			filepath.Join(home, "node_modules", ".bin", "claude"),
+			filepath.Join(home, ".yarn", "bin", "claude"),
+			filepath.Join(home, ".claude", "local", "claude"),
+		}
+
+		if runtime.GOOS == "windows" {
+			for i, loc := range fallbackLocations {
+				fallbackLocations[i] = loc + ".exe"
+			}
+		}
+
+		path, err := FindCLI()
+
+		if err != nil {
+			// No fallback location exists, create one to test
+			testDir := filepath.Join(home, ".claude", "local")
+			if mkErr := os.MkdirAll(testDir, 0755); mkErr != nil {
+				t.Skip("cannot create test directory")
+			}
+
+			var cliName string
+			if runtime.GOOS == "windows" {
+				cliName = "claude.exe"
+			} else {
+				cliName = "claude"
+			}
+
+			testCLI := filepath.Join(testDir, cliName)
+			if writeErr := os.WriteFile(testCLI, []byte("#!/bin/sh\necho test"), 0755); writeErr != nil {
+				t.Skip("cannot create test file")
+			}
+			defer os.Remove(testCLI)
+
+			path, err = FindCLI()
+			if err != nil {
+				t.Errorf("FindCLI() error = %v, want nil", err)
+			}
+			if path != testCLI {
+				t.Errorf("FindCLI() = %q, want %q", path, testCLI)
+			}
+			return
+		}
+
+		// Verify the path is one of the expected fallback locations
+		found := false
+		for _, loc := range fallbackLocations {
+			if path == loc {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("FindCLI() = %q, not in expected fallback locations", path)
+		}
+	})
+}

@@ -62,7 +62,7 @@ func FindCLI() (string, error) {
 	}
 
 	// On Windows, also check for .exe
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == "windows" { //nolint:goconst // runtime.GOOS comparison is standard Go idiom
 		for i, loc := range locations {
 			locations[i] = loc + ".exe"
 		}

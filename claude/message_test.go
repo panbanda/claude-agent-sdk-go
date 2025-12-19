@@ -14,6 +14,16 @@ func TestMessageInterface(t *testing.T) {
 		var _ Message = &ResultMessage{}
 		var _ Message = &StreamEvent{}
 	})
+
+	t.Run("messageMarker methods are callable", func(t *testing.T) {
+		// Call the marker methods to ensure coverage
+		// These are no-ops but seal the interface
+		(&UserMessage{}).messageMarker()
+		(&AssistantMessage{}).messageMarker()
+		(&SystemMessage{}).messageMarker()
+		(&ResultMessage{}).messageMarker()
+		(&StreamEvent{}).messageMarker()
+	})
 }
 
 func TestUserMessage(t *testing.T) {

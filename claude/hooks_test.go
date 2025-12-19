@@ -2,8 +2,10 @@ package claude
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestHookEvent(t *testing.T) {
@@ -170,6 +172,23 @@ func TestWithPostToolUseHook(t *testing.T) {
 			t.Error("PostToolUse hook not registered")
 		}
 	})
+
+	t.Run("registers with timeout option", func(t *testing.T) {
+		hook := func(ctx context.Context, input *PostToolUseInput, hookCtx *HookContext) (*HookOutput, error) {
+			return &HookOutput{}, nil
+		}
+
+		cfg := &config{}
+		WithPostToolUseHook("Bash", hook, HookTimeout(45*time.Second))(cfg)
+
+		matchers := cfg.hooks[PostToolUse]
+		if len(matchers) != 1 {
+			t.Fatalf("matchers length = %d, want 1", len(matchers))
+		}
+		if matchers[0].timeout != 45*time.Second {
+			t.Errorf("timeout = %v, want 45s", matchers[0].timeout)
+		}
+	})
 }
 
 func TestWithUserPromptSubmitHook(t *testing.T) {
@@ -190,6 +209,23 @@ func TestWithUserPromptSubmitHook(t *testing.T) {
 			t.Error("UserPromptSubmit hook not registered")
 		}
 	})
+
+	t.Run("registers with timeout option", func(t *testing.T) {
+		hook := func(ctx context.Context, input *UserPromptSubmitInput, hookCtx *HookContext) (*HookOutput, error) {
+			return &HookOutput{}, nil
+		}
+
+		cfg := &config{}
+		WithUserPromptSubmitHook(hook, HookTimeout(20*time.Second))(cfg)
+
+		matchers := cfg.hooks[UserPromptSubmit]
+		if len(matchers) != 1 {
+			t.Fatalf("matchers length = %d, want 1", len(matchers))
+		}
+		if matchers[0].timeout != 20*time.Second {
+			t.Errorf("timeout = %v, want 20s", matchers[0].timeout)
+		}
+	})
 }
 
 func TestWithStopHook(t *testing.T) {
@@ -206,6 +242,93 @@ func TestWithStopHook(t *testing.T) {
 		}
 		if _, ok := cfg.hooks[Stop]; !ok {
 			t.Error("Stop hook not registered")
+		}
+	})
+
+	t.Run("registers with timeout option", func(t *testing.T) {
+		hook := func(ctx context.Context, input *StopInput, hookCtx *HookContext) (*HookOutput, error) {
+			return &HookOutput{}, nil
+		}
+
+		cfg := &config{}
+		WithStopHook(hook, HookTimeout(15*time.Second))(cfg)
+
+		matchers := cfg.hooks[Stop]
+		if len(matchers) != 1 {
+			t.Fatalf("matchers length = %d, want 1", len(matchers))
+		}
+		if matchers[0].timeout != 15*time.Second {
+			t.Errorf("timeout = %v, want 15s", matchers[0].timeout)
+		}
+	})
+}
+
+func TestWithSubagentStopHook(t *testing.T) {
+	t.Run("registers hook function", func(t *testing.T) {
+		hook := func(ctx context.Context, input *SubagentStopInput, hookCtx *HookContext) (*HookOutput, error) {
+			return &HookOutput{}, nil
+		}
+
+		cfg := &config{}
+		WithSubagentStopHook(hook)(cfg)
+
+		if len(cfg.hooks) == 0 {
+			t.Fatal("hooks map should not be empty")
+		}
+		if _, ok := cfg.hooks[SubagentStop]; !ok {
+			t.Error("SubagentStop hook not registered")
+		}
+	})
+
+	t.Run("registers with timeout option", func(t *testing.T) {
+		hook := func(ctx context.Context, input *SubagentStopInput, hookCtx *HookContext) (*HookOutput, error) {
+			return &HookOutput{}, nil
+		}
+
+		cfg := &config{}
+		WithSubagentStopHook(hook, HookTimeout(30*time.Second))(cfg)
+
+		matchers := cfg.hooks[SubagentStop]
+		if len(matchers) != 1 {
+			t.Fatalf("matchers length = %d, want 1", len(matchers))
+		}
+		if matchers[0].timeout != 30*time.Second {
+			t.Errorf("timeout = %v, want 30s", matchers[0].timeout)
+		}
+	})
+}
+
+func TestWithPreCompactHook(t *testing.T) {
+	t.Run("registers hook function", func(t *testing.T) {
+		hook := func(ctx context.Context, input *PreCompactInput, hookCtx *HookContext) (*HookOutput, error) {
+			return &HookOutput{}, nil
+		}
+
+		cfg := &config{}
+		WithPreCompactHook(hook)(cfg)
+
+		if len(cfg.hooks) == 0 {
+			t.Fatal("hooks map should not be empty")
+		}
+		if _, ok := cfg.hooks[PreCompact]; !ok {
+			t.Error("PreCompact hook not registered")
+		}
+	})
+
+	t.Run("registers with timeout option", func(t *testing.T) {
+		hook := func(ctx context.Context, input *PreCompactInput, hookCtx *HookContext) (*HookOutput, error) {
+			return &HookOutput{}, nil
+		}
+
+		cfg := &config{}
+		WithPreCompactHook(hook, HookTimeout(60*time.Second))(cfg)
+
+		matchers := cfg.hooks[PreCompact]
+		if len(matchers) != 1 {
+			t.Fatalf("matchers length = %d, want 1", len(matchers))
+		}
+		if matchers[0].timeout != 60*time.Second {
+			t.Errorf("timeout = %v, want 60s", matchers[0].timeout)
 		}
 	})
 }
@@ -409,6 +532,92 @@ func TestHookCallbackExecution(t *testing.T) {
 		}
 		if receivedInput.ToolResponse != "hello\n" {
 			t.Errorf("ToolResponse = %v, want 'hello\\n'", receivedInput.ToolResponse)
+		}
+	})
+
+	t.Run("hook returning error results in continue response", func(t *testing.T) {
+		hook := func(ctx context.Context, input *PreToolUseInput, hookCtx *HookContext) (*HookOutput, error) {
+			return nil, errors.New("hook failed")
+		}
+
+		mt := newMockTransport()
+		client := NewClient(
+			WithTransport(mt),
+			WithPreToolUseHook("", hook),
+		)
+
+		ctx := context.Background()
+		if err := client.Connect(ctx); err != nil {
+			t.Fatalf("Connect() error = %v", err)
+		}
+		defer client.Close()
+
+		controlRequest := `{"type":"control_request","request_id":"req-err","request":{"subtype":"hook_callback","callback_id":"hook_0","input":{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{},"tool_use_id":"tool-err"}}}`
+		mt.QueueMessage([]byte(controlRequest))
+		mt.QueueMessage([]byte(`{"type":"result","subtype":"success"}`))
+		mt.CloseMessages()
+
+		for range client.Messages() {
+		}
+
+		// Response should have continue: true due to error
+		var foundResponse bool
+		for _, msg := range mt.sentMessages {
+			msgStr := string(msg)
+			if strings.Contains(msgStr, "control_response") && strings.Contains(msgStr, "req-err") {
+				foundResponse = true
+				if !strings.Contains(msgStr, `"continue":true`) {
+					t.Errorf("response should contain continue:true, got: %s", msgStr)
+				}
+			}
+		}
+		if !foundResponse {
+			t.Error("control_response not found")
+		}
+	})
+
+	t.Run("hook with Continue field set", func(t *testing.T) {
+		continueVal := false
+		hook := func(ctx context.Context, input *PreToolUseInput, hookCtx *HookContext) (*HookOutput, error) {
+			return &HookOutput{
+				Decision: HookDecisionAllow,
+				Continue: &continueVal,
+			}, nil
+		}
+
+		mt := newMockTransport()
+		client := NewClient(
+			WithTransport(mt),
+			WithPreToolUseHook("", hook),
+		)
+
+		ctx := context.Background()
+		if err := client.Connect(ctx); err != nil {
+			t.Fatalf("Connect() error = %v", err)
+		}
+		defer client.Close()
+
+		controlRequest := `{"type":"control_request","request_id":"req-cont","request":{"subtype":"hook_callback","callback_id":"hook_0","input":{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{},"tool_use_id":"tool-cont"}}}`
+		mt.QueueMessage([]byte(controlRequest))
+		mt.QueueMessage([]byte(`{"type":"result","subtype":"success"}`))
+		mt.CloseMessages()
+
+		for range client.Messages() {
+		}
+
+		// Response should have continue: false
+		var foundResponse bool
+		for _, msg := range mt.sentMessages {
+			msgStr := string(msg)
+			if strings.Contains(msgStr, "control_response") && strings.Contains(msgStr, "req-cont") {
+				foundResponse = true
+				if !strings.Contains(msgStr, `"continue":false`) {
+					t.Errorf("response should contain continue:false, got: %s", msgStr)
+				}
+			}
+		}
+		if !foundResponse {
+			t.Error("control_response not found")
 		}
 	})
 }

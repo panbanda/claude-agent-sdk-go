@@ -498,3 +498,30 @@ func TestNewControlResponseError(t *testing.T) {
 		}
 	})
 }
+
+func TestNewSetPermissionModeRequest(t *testing.T) {
+	t.Run("creates set permission mode request", func(t *testing.T) {
+		req := NewSetPermissionModeRequest(PermissionBypass)
+
+		if req.Type != "control_request" {
+			t.Errorf("Type = %q, want 'control_request'", req.Type)
+		}
+		if req.RequestID == "" {
+			t.Error("RequestID should not be empty")
+		}
+		if req.Request.Subtype != ControlSubtypeSetPermissionMode {
+			t.Errorf("Subtype = %q, want 'set_permission_mode'", req.Request.Subtype)
+		}
+		if req.Request.Mode != string(PermissionBypass) {
+			t.Errorf("Mode = %q, want '%s'", req.Request.Mode, PermissionBypass)
+		}
+	})
+
+	t.Run("creates request with accept edits mode", func(t *testing.T) {
+		req := NewSetPermissionModeRequest(PermissionAcceptEdits)
+
+		if req.Request.Mode != string(PermissionAcceptEdits) {
+			t.Errorf("Mode = %q, want '%s'", req.Request.Mode, PermissionAcceptEdits)
+		}
+	})
+}

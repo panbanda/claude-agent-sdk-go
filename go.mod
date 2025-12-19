@@ -1,3 +1,3 @@
 module github.com/panbanda/claude-agent-sdk-go
 
-go 1.21
+go 1.24

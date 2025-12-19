@@ -239,6 +239,73 @@ func TestHookOptions(t *testing.T) {
 	})
 }
 
+func TestWithCanUseTool(t *testing.T) {
+	t.Run("sets canUseTool callback", func(t *testing.T) {
+		fn := func(toolName string, input map[string]any) (PermissionResult, error) {
+			return PermissionResult{Allow: true}, nil
+		}
+
+		cfg := &config{}
+		applyOptions(cfg, WithCanUseTool(fn))
+
+		if cfg.canUseTool == nil {
+			t.Error("canUseTool should not be nil")
+		}
+	})
+
+	t.Run("callback is invocable", func(t *testing.T) {
+		called := false
+		fn := func(toolName string, input map[string]any) (PermissionResult, error) {
+			called = true
+			if toolName != "Bash" {
+				t.Errorf("toolName = %q, want 'Bash'", toolName)
+			}
+			if input["command"] != "ls" {
+				t.Errorf("input[command] = %v, want 'ls'", input["command"])
+			}
+			return PermissionResult{Allow: true, Message: "allowed"}, nil
+		}
+
+		cfg := &config{}
+		applyOptions(cfg, WithCanUseTool(fn))
+
+		result, err := cfg.canUseTool("Bash", map[string]any{"command": "ls"})
+		if err != nil {
+			t.Errorf("canUseTool error = %v, want nil", err)
+		}
+		if !called {
+			t.Error("callback was not called")
+		}
+		if !result.Allow {
+			t.Error("result.Allow should be true")
+		}
+		if result.Message != "allowed" {
+			t.Errorf("result.Message = %q, want 'allowed'", result.Message)
+		}
+	})
+
+	t.Run("callback can deny with updated input", func(t *testing.T) {
+		fn := func(toolName string, input map[string]any) (PermissionResult, error) {
+			return PermissionResult{
+				Allow:        false,
+				Message:      "denied",
+				UpdatedInput: map[string]any{"command": "echo denied"},
+			}, nil
+		}
+
+		cfg := &config{}
+		applyOptions(cfg, WithCanUseTool(fn))
+
+		result, _ := cfg.canUseTool("Bash", map[string]any{"command": "rm -rf /"})
+		if result.Allow {
+			t.Error("result.Allow should be false")
+		}
+		if result.UpdatedInput["command"] != "echo denied" {
+			t.Errorf("UpdatedInput[command] = %v, want 'echo denied'", result.UpdatedInput["command"])
+		}
+	})
+}
+
 // Helper to apply options
 func applyOptions(cfg *config, opts ...Option) {
 	for _, opt := range opts {

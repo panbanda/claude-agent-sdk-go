@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"testing"
+	"testing/synctest"
 	"time"
 )
 
@@ -116,6 +117,17 @@ func TestQuery(t *testing.T) {
 		}
 	})
 
+	t.Run("returns error on send failure", func(t *testing.T) {
+		mt := newMockTransport()
+		mt.sendErr = errors.New("send failed")
+
+		_, err := Query(context.Background(), "test", WithTransport(mt))
+
+		if err == nil || err.Error() != "send failed" {
+			t.Errorf("Query() error = %v, want 'send failed'", err)
+		}
+	})
+
 	t.Run("respects context cancellation", func(t *testing.T) {
 		mt := newMockTransport()
 
@@ -207,6 +219,65 @@ func TestQueryCompletesOnResult(t *testing.T) {
 		if ctx.Err() == context.DeadlineExceeded {
 			t.Error("Query hung waiting for transport to close instead of completing on ResultMessage")
 		}
+	})
+}
+
+func TestQueryContextCancellation(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) { //nolint:thelper // synctest.Test passes t to our function
+		// Create a mock transport with a larger buffer to hold all messages
+		mt := &mockTransport{
+			messagesCh: make(chan []byte, 110),
+			errorsCh:   make(chan error, 10),
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+
+		// Start the query first
+		msgs, err := Query(ctx, "test", WithTransport(mt))
+		if err != nil {
+			t.Fatalf("Query() error = %v", err)
+		}
+
+		// Queue 101 messages to fill the output channel buffer (size 100)
+		// The goroutine will block trying to send the 101st message
+		for i := 0; i < 101; i++ {
+			assistantMsg := map[string]any{
+				"type": "assistant",
+				"message": map[string]any{
+					"role":    "assistant",
+					"content": []any{map[string]any{"type": "text", "text": "msg"}},
+					"model":   "claude-sonnet-4-5",
+				},
+			}
+			assistantBytes, _ := json.Marshal(assistantMsg)
+			mt.messagesCh <- assistantBytes
+		}
+
+		// Wait for the goroutine to fill the output channel and block on the 101st
+		synctest.Wait()
+
+		// Cancel context while goroutine is blocked trying to send
+		cancel()
+
+		// Wait for goroutine to process cancellation and exit via ctx.Done()
+		synctest.Wait()
+
+		// Channel should close due to context cancellation
+		// Drain any messages that were buffered
+		count := 0
+		for range msgs {
+			count++
+		}
+
+		// Should have received only the buffered messages (100), not all 101
+		// because the goroutine exited on ctx.Done() while trying to send the 101st
+		if count != 100 {
+			t.Errorf("received %d messages, want 100 (buffer size)", count)
+		}
+
+		// Close the transport channel to allow the Client's readMessages goroutine to exit
+		close(mt.messagesCh)
+		synctest.Wait()
 	})
 }
 
