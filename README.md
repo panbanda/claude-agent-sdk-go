@@ -1,17 +1,22 @@
 # Claude Agent SDK for Go
 
 <p align="center">
-  <img src="assets/header-image.jpg" alt="Claude Agent SDK for Go">
+  <img src="assets/header-image.jpg" alt="Claude Agent SDK for Go" width="100%">
 </p>
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/panbanda/claude-agent-sdk-go.svg)](https://pkg.go.dev/github.com/panbanda/claude-agent-sdk-go)
-[![Go Report Card](https://goreportcard.com/badge/github.com/panbanda/claude-agent-sdk-go)](https://goreportcard.com/report/github.com/panbanda/claude-agent-sdk-go)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Go Version](https://img.shields.io/github/go-mod/go-version/panbanda/claude-agent-sdk-go)](https://go.dev/)
-[![Tests](https://github.com/panbanda/claude-agent-sdk-go/actions/workflows/test.yml/badge.svg)](https://github.com/panbanda/claude-agent-sdk-go/actions/workflows/test.yml)
-[![Coverage](https://codecov.io/gh/panbanda/claude-agent-sdk-go/branch/main/graph/badge.svg)](https://codecov.io/gh/panbanda/claude-agent-sdk-go)
+<p align="center">
+  <a href="https://pkg.go.dev/github.com/panbanda/claude-agent-sdk-go"><img src="https://pkg.go.dev/badge/github.com/panbanda/claude-agent-sdk-go.svg" alt="Go Reference"></a>
+  <a href="https://goreportcard.com/report/github.com/panbanda/claude-agent-sdk-go"><img src="https://goreportcard.com/badge/github.com/panbanda/claude-agent-sdk-go" alt="Go Report Card"></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
+  <a href="https://go.dev/"><img src="https://img.shields.io/github/go-mod/go-version/panbanda/claude-agent-sdk-go" alt="Go Version"></a>
+  <a href="https://github.com/panbanda/claude-agent-sdk-go/actions/workflows/test.yml"><img src="https://github.com/panbanda/claude-agent-sdk-go/actions/workflows/test.yml/badge.svg" alt="Tests"></a>
+  <a href="https://codecov.io/gh/panbanda/claude-agent-sdk-go"><img src="https://codecov.io/gh/panbanda/claude-agent-sdk-go/branch/main/graph/badge.svg" alt="Coverage"></a>
+</p>
 
-The official Go SDK for building AI agents with [Claude Code](https://docs.anthropic.com/en/docs/claude-code). This SDK provides a clean, idiomatic Go interface for interacting with Claude's agentic capabilities.
+<p align="center">
+  The official Go SDK for building AI agents with <a href="https://docs.anthropic.com/en/docs/claude-code">Claude Code</a>.<br>
+  A clean, idiomatic Go interface for interacting with Claude's agentic capabilities.
+</p>
 
 ## Features
 
