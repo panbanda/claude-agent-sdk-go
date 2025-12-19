@@ -8,7 +8,7 @@
   <a href="https://pkg.go.dev/github.com/panbanda/claude-agent-sdk-go"><img src="https://pkg.go.dev/badge/github.com/panbanda/claude-agent-sdk-go.svg" alt="Go Reference"></a>
   <a href="https://goreportcard.com/report/github.com/panbanda/claude-agent-sdk-go"><img src="https://goreportcard.com/badge/github.com/panbanda/claude-agent-sdk-go" alt="Go Report Card"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
-  <a href="https://github.com/panbanda/claude-agent-sdk-go/actions/workflows/test.yml"><img src="https://github.com/panbanda/claude-agent-sdk-go/actions/workflows/test.yml/badge.svg" alt="Tests"></a>
+  <a href="https://github.com/panbanda/claude-agent-sdk-go/actions/workflows/test.yml?query=branch%3Amain"><img src="https://github.com/panbanda/claude-agent-sdk-go/actions/workflows/test.yml/badge.svg?branch=main" alt="Tests"></a>
   <a href="https://codecov.io/gh/panbanda/claude-agent-sdk-go"><img src="https://codecov.io/gh/panbanda/claude-agent-sdk-go/branch/main/graph/badge.svg" alt="Coverage"></a>
 </p>
 
