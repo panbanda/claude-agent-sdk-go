@@ -62,6 +62,10 @@ func Query(ctx context.Context, prompt string, opts ...Option) (<-chan Message, 
 			case <-ctx.Done():
 				return
 			case out <- msg:
+				// Close after sending ResultMessage - query is complete
+				if _, isResult := msg.(*ResultMessage); isResult {
+					return
+				}
 			}
 		}
 	}()

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"testing"
+	"time"
 )
 
 func TestQuery(t *testing.T) {
@@ -152,6 +153,60 @@ func TestQuery(t *testing.T) {
 		}
 
 		// The options should be applied (verified by the client working correctly)
+	})
+}
+
+func TestQueryCompletesOnResult(t *testing.T) {
+	t.Run("Query closes after ResultMessage without waiting for transport close", func(t *testing.T) {
+		mt := newMockTransport()
+
+		// Queue messages but DON'T close the transport
+		// This simulates the real CLI which stays running in stream-json mode
+		assistantMsg := map[string]any{
+			"type": "assistant",
+			"message": map[string]any{
+				"role":    "assistant",
+				"content": []any{map[string]any{"type": "text", "text": "4"}},
+				"model":   "claude-sonnet-4-5",
+			},
+		}
+		resultMsg := map[string]any{
+			"type":           "result",
+			"subtype":        "success",
+			"session_id":     "test",
+			"total_cost_usd": 0.001,
+		}
+
+		assistantBytes, _ := json.Marshal(assistantMsg)
+		resultBytes, _ := json.Marshal(resultMsg)
+		mt.QueueMessage(assistantBytes)
+		mt.QueueMessage(resultBytes)
+		// Note: NOT calling mt.CloseMessages()
+
+		// Use a timeout context to detect if it hangs
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+
+		msgs, err := Query(ctx, "What is 2+2?", WithTransport(mt))
+		if err != nil {
+			t.Fatalf("Query() error = %v", err)
+		}
+
+		var gotResult bool
+		for msg := range msgs {
+			if _, ok := msg.(*ResultMessage); ok {
+				gotResult = true
+			}
+		}
+
+		if !gotResult {
+			t.Error("did not receive ResultMessage")
+		}
+
+		// Check that context wasn't the reason we exited (timeout)
+		if ctx.Err() == context.DeadlineExceeded {
+			t.Error("Query hung waiting for transport to close instead of completing on ResultMessage")
+		}
 	})
 }
 
