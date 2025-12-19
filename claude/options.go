@@ -1,6 +1,7 @@
 package claude
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -56,11 +57,20 @@ type config struct {
 	// Advanced
 	maxThinkingTokens int
 
+	// MCP
+	mcpConfig string
+
 	// Transport (for testing)
 	transport Transport
 
 	// Hooks
 	hooks map[HookEvent][]hookMatcher
+
+	// Hook callbacks indexed by ID for control request handling
+	hookCallbacks map[string]any
+
+	// Counter for generating unique callback IDs
+	nextCallbackID int
 
 	// Internal callback for tool permissions
 	canUseTool CanUseToolFunc
@@ -69,6 +79,23 @@ type config struct {
 // Option is a function that configures the client.
 // Use With* functions to create options.
 type Option func(*config)
+
+// initHookMaps ensures hook maps are initialized.
+func (c *config) initHookMaps() {
+	if c.hooks == nil {
+		c.hooks = make(map[HookEvent][]hookMatcher)
+	}
+	if c.hookCallbacks == nil {
+		c.hookCallbacks = make(map[string]any)
+	}
+}
+
+// generateCallbackID creates a unique callback ID.
+func (c *config) generateCallbackID() string {
+	id := fmt.Sprintf("hook_%d", c.nextCallbackID)
+	c.nextCallbackID++
+	return id
+}
 
 // WithModel sets the model to use (e.g., "claude-sonnet-4-5").
 func WithModel(model string) Option {
@@ -168,6 +195,14 @@ func WithMaxThinkingTokens(tokens int) Option {
 	}
 }
 
+// WithMCPConfig sets the path to an MCP server configuration file.
+// The config file specifies MCP servers that Claude can use as tools.
+func WithMCPConfig(path string) Option {
+	return func(c *config) {
+		c.mcpConfig = path
+	}
+}
+
 // WithTransport sets a custom transport (primarily for testing).
 func WithTransport(t Transport) Option {
 	return func(c *config) {
@@ -190,11 +225,11 @@ func HookTimeout(d time.Duration) HookOption {
 	}
 }
 
-// hookMatcher pairs a pattern with callbacks and timeout.
+// hookMatcher pairs a pattern with callback IDs and timeout.
 type hookMatcher struct {
-	matcher string
-	hooks   []any // Hook function (type depends on event)
-	timeout time.Duration
+	matcher     string
+	callbackIDs []string // IDs referencing hookCallbacks map
+	timeout     time.Duration
 }
 
 // HookEvent represents the type of hook event.

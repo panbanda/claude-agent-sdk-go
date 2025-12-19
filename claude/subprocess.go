@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,8 +19,8 @@ type SubprocessTransport struct {
 	cliPath  string
 	cfg      *config
 	cmd      *exec.Cmd
-	stdin    *os.File
-	stdout   *os.File
+	stdin    io.WriteCloser
+	stdout   io.ReadCloser
 	messages chan []byte
 	errors   chan error
 	ready    bool
@@ -137,6 +138,11 @@ func (st *SubprocessTransport) buildCommand() []string {
 		cmd = append(cmd, "--max-thinking-tokens", strconv.Itoa(cfg.maxThinkingTokens))
 	}
 
+	// MCP config
+	if cfg.mcpConfig != "" {
+		cmd = append(cmd, "--mcp-config", cfg.mcpConfig)
+	}
+
 	// Streaming mode: use --input-format stream-json
 	cmd = append(cmd, "--input-format", "stream-json")
 
@@ -196,13 +202,9 @@ func (st *SubprocessTransport) Connect(ctx context.Context) error {
 		return fmt.Errorf("failed to start claude process: %w", err)
 	}
 
-	// Store pipes (converting io.WriteCloser/io.ReadCloser to *os.File if possible)
-	if f, ok := stdinPipe.(*os.File); ok {
-		st.stdin = f
-	}
-	if f, ok := stdoutPipe.(*os.File); ok {
-		st.stdout = f
-	}
+	// Store pipes for writing/reading
+	st.stdin = stdinPipe
+	st.stdout = stdoutPipe
 
 	// Start reading messages
 	go st.readMessages(stdoutPipe)
@@ -263,19 +265,7 @@ func (st *SubprocessTransport) Send(_ context.Context, data []byte) error {
 	st.mu.RLock()
 	defer st.mu.RUnlock()
 
-	if !st.ready {
-		return ErrNotConnected
-	}
-
-	if st.stdin == nil {
-		// Try using cmd.Stdin directly
-		if st.cmd != nil && st.cmd.Process != nil {
-			// Write to stdin pipe
-			if stdin, ok := st.cmd.Stdin.(*os.File); ok {
-				_, err := stdin.Write(data)
-				return err
-			}
-		}
+	if !st.ready || st.stdin == nil {
 		return ErrNotConnected
 	}
 

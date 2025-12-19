@@ -183,6 +183,15 @@ func TestOptions(t *testing.T) {
 		}
 	})
 
+	t.Run("WithMCPConfig sets MCP config path", func(t *testing.T) {
+		cfg := &config{}
+		applyOptions(cfg, WithMCPConfig("/path/to/mcp-config.json"))
+
+		if cfg.mcpConfig != "/path/to/mcp-config.json" {
+			t.Errorf("mcpConfig = %q, want %q", cfg.mcpConfig, "/path/to/mcp-config.json")
+		}
+	})
+
 	t.Run("multiple options compose", func(t *testing.T) {
 		cfg := &config{}
 		applyOptions(cfg,

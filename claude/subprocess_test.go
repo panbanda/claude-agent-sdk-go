@@ -286,6 +286,27 @@ func TestSubprocessTransport_BuildCommand(t *testing.T) {
 			t.Errorf("command should contain --input-format stream-json, got %v", cmd)
 		}
 	})
+
+	t.Run("includes mcp config flag", func(t *testing.T) {
+		cfg := &config{mcpConfig: "/path/to/mcp-config.json"}
+		st := &SubprocessTransport{
+			cliPath: "/usr/bin/claude",
+			cfg:     cfg,
+		}
+
+		cmd := st.buildCommand()
+
+		containsMCPConfig := false
+		for i, arg := range cmd {
+			if arg == "--mcp-config" && i+1 < len(cmd) && cmd[i+1] == "/path/to/mcp-config.json" {
+				containsMCPConfig = true
+				break
+			}
+		}
+		if !containsMCPConfig {
+			t.Errorf("command should contain --mcp-config /path/to/mcp-config.json, got %v", cmd)
+		}
+	})
 }
 
 func TestSubprocessTransport_Connect(t *testing.T) {
