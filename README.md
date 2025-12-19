@@ -28,7 +28,7 @@
 
 ## Requirements
 
-- Go 1.21 or later
+- Go 1.24 or later
 - [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) installed
 
 ## Installation
