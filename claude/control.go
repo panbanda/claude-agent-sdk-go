@@ -48,8 +48,9 @@ type ControlRequestBody struct {
 	PermissionSuggestions []any          `json:"permission_suggestions,omitempty"`
 	BlockedPath           string         `json:"blocked_path,omitempty"`
 
-	// For initialize
-	Hooks map[HookEvent][]HookDefinition `json:"hooks,omitempty"`
+	// For initialize (use InitHookDefs for the actual hook config sent to CLI)
+	Hooks        map[HookEvent][]HookDefinition    `json:"-"`
+	InitHookDefs map[HookEvent][]InitializeHookDef `json:"hooks,omitempty"`
 
 	// For set_permission_mode
 	Mode string `json:"mode,omitempty"`
@@ -71,6 +72,13 @@ type ControlRequestBody struct {
 type HookDefinition struct {
 	Matcher string `json:"matcher,omitempty"`
 	Timeout int    `json:"timeout,omitempty"`
+}
+
+// InitializeHookDef describes a hook for the initialize request.
+type InitializeHookDef struct {
+	Matcher         string   `json:"matcher,omitempty"`
+	HookCallbackIDs []string `json:"hookCallbackIds"`
+	Timeout         *int     `json:"timeout,omitempty"`
 }
 
 // ControlResponse is a message received from CLI in response to a request.
@@ -135,12 +143,27 @@ func NewInterruptRequest() *ControlRequest {
 
 // NewInitializeRequest creates an initialize request with hook definitions.
 func NewInitializeRequest(hooks map[HookEvent][]HookDefinition) *ControlRequest {
+	// Convert HookDefinition to InitializeHookDef
+	initHooks := make(map[HookEvent][]InitializeHookDef)
+	for event, defs := range hooks {
+		for _, def := range defs {
+			initDef := InitializeHookDef{
+				Matcher:         def.Matcher,
+				HookCallbackIDs: []string{}, // Empty for direct use
+			}
+			if def.Timeout > 0 {
+				initDef.Timeout = &def.Timeout
+			}
+			initHooks[event] = append(initHooks[event], initDef)
+		}
+	}
+
 	return &ControlRequest{
 		Type:      "control_request",
 		RequestID: generateRequestID(),
 		Request: &ControlRequestBody{
-			Subtype: ControlSubtypeInitialize,
-			Hooks:   hooks,
+			Subtype:      ControlSubtypeInitialize,
+			InitHookDefs: initHooks,
 		},
 	}
 }

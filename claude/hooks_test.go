@@ -2,6 +2,7 @@ package claude
 
 import (
 	"context"
+	"strings"
 	"testing"
 )
 
@@ -227,3 +228,188 @@ func TestHookDecision(t *testing.T) {
 		}
 	})
 }
+
+func TestHookInitialization(t *testing.T) {
+	t.Run("sends initialize request with hooks on connect", func(t *testing.T) {
+		hook := func(ctx context.Context, input *PreToolUseInput, hookCtx *HookContext) (*HookOutput, error) {
+			return &HookOutput{Decision: HookDecisionAllow}, nil
+		}
+
+		mt := newMockTransport()
+		client := NewClient(
+			WithTransport(mt),
+			WithPreToolUseHook("Bash", hook),
+		)
+
+		ctx := context.Background()
+		if err := client.Connect(ctx); err != nil {
+			t.Fatalf("Connect() error = %v", err)
+		}
+		defer client.Close()
+
+		// Check that an initialize request was sent
+		if len(mt.sentMessages) == 0 {
+			t.Fatal("no messages sent on connect")
+		}
+
+		initMsg := string(mt.sentMessages[0])
+		if !strings.Contains(initMsg, "control_request") {
+			t.Errorf("first message should be control_request, got: %s", initMsg)
+		}
+		if !strings.Contains(initMsg, "initialize") {
+			t.Errorf("first message should contain initialize subtype, got: %s", initMsg)
+		}
+		if !strings.Contains(initMsg, "PreToolUse") {
+			t.Errorf("initialize should contain PreToolUse hook, got: %s", initMsg)
+		}
+		if !strings.Contains(initMsg, "hook_0") {
+			t.Errorf("initialize should contain callback ID hook_0, got: %s", initMsg)
+		}
+	})
+}
+
+func TestHookCallbackExecution(t *testing.T) {
+	t.Run("PreToolUse hook is invoked on control_request", func(t *testing.T) {
+		hookCalled := false
+		var receivedInput *PreToolUseInput
+
+		hook := func(ctx context.Context, input *PreToolUseInput, hookCtx *HookContext) (*HookOutput, error) {
+			hookCalled = true
+			receivedInput = input
+			return &HookOutput{Decision: HookDecisionAllow}, nil
+		}
+
+		mt := newMockTransport()
+		client := NewClient(
+			WithTransport(mt),
+			WithPreToolUseHook("Bash", hook),
+		)
+
+		ctx := context.Background()
+		if err := client.Connect(ctx); err != nil {
+			t.Fatalf("Connect() error = %v", err)
+		}
+		defer client.Close()
+
+		// Simulate CLI sending a hook_callback control request
+		controlRequest := `{"type":"control_request","request_id":"req-123","request":{"subtype":"hook_callback","callback_id":"hook_0","input":{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"ls -la"},"tool_use_id":"tool-456"}}}`
+		mt.QueueMessage([]byte(controlRequest))
+
+		// Also queue a result so the message loop terminates
+		mt.QueueMessage([]byte(`{"type":"result","subtype":"success"}`))
+		mt.CloseMessages()
+
+		// Consume messages to trigger hook processing
+		for range client.Messages() {
+		}
+
+		if !hookCalled {
+			t.Error("hook was not called")
+		}
+		if receivedInput == nil {
+			t.Fatal("receivedInput is nil")
+		}
+		if receivedInput.ToolName != "Bash" {
+			t.Errorf("ToolName = %q, want 'Bash'", receivedInput.ToolName)
+		}
+		if receivedInput.ToolInput["command"] != "ls -la" {
+			t.Errorf("ToolInput[command] = %v, want 'ls -la'", receivedInput.ToolInput["command"])
+		}
+	})
+
+	t.Run("control_response is sent after hook execution", func(t *testing.T) {
+		hook := func(ctx context.Context, input *PreToolUseInput, hookCtx *HookContext) (*HookOutput, error) {
+			return &HookOutput{
+				Decision: HookDecisionDeny,
+				Reason:   "blocked by test",
+			}, nil
+		}
+
+		mt := newMockTransport()
+		client := NewClient(
+			WithTransport(mt),
+			WithPreToolUseHook("", hook),
+		)
+
+		ctx := context.Background()
+		if err := client.Connect(ctx); err != nil {
+			t.Fatalf("Connect() error = %v", err)
+		}
+		defer client.Close()
+
+		// Simulate CLI sending a hook_callback control request
+		controlRequest := `{"type":"control_request","request_id":"req-789","request":{"subtype":"hook_callback","callback_id":"hook_0","input":{"hook_event_name":"PreToolUse","tool_name":"Read","tool_input":{"file_path":"/etc/passwd"},"tool_use_id":"tool-999"}}}`
+		mt.QueueMessage([]byte(controlRequest))
+		mt.QueueMessage([]byte(`{"type":"result","subtype":"success"}`))
+		mt.CloseMessages()
+
+		for range client.Messages() {
+		}
+
+		// Check that a control_response was sent
+		if len(mt.sentMessages) == 0 {
+			t.Fatal("no messages sent back to CLI")
+		}
+
+		// Find the control_response in sent messages
+		var foundResponse bool
+		for _, msg := range mt.sentMessages {
+			msgStr := string(msg)
+			if strings.Contains(msgStr, "control_response") && strings.Contains(msgStr, "req-789") {
+				foundResponse = true
+				if !strings.Contains(msgStr, "deny") {
+					t.Errorf("response should contain deny decision, got: %s", msgStr)
+				}
+				break
+			}
+		}
+		if !foundResponse {
+			t.Errorf("control_response not found in sent messages: %v", mt.sentMessages)
+		}
+	})
+
+	t.Run("PostToolUse hook is invoked on control_request", func(t *testing.T) {
+		hookCalled := false
+		var receivedInput *PostToolUseInput
+
+		hook := func(ctx context.Context, input *PostToolUseInput, hookCtx *HookContext) (*HookOutput, error) {
+			hookCalled = true
+			receivedInput = input
+			return &HookOutput{}, nil
+		}
+
+		mt := newMockTransport()
+		client := NewClient(
+			WithTransport(mt),
+			WithPostToolUseHook("", hook),
+		)
+
+		ctx := context.Background()
+		if err := client.Connect(ctx); err != nil {
+			t.Fatalf("Connect() error = %v", err)
+		}
+		defer client.Close()
+
+		controlRequest := `{"type":"control_request","request_id":"req-post","request":{"subtype":"hook_callback","callback_id":"hook_0","input":{"hook_event_name":"PostToolUse","tool_name":"Bash","tool_input":{"command":"echo hello"},"tool_response":"hello\n","is_error":false,"tool_use_id":"tool-post"}}}`
+		mt.QueueMessage([]byte(controlRequest))
+		mt.QueueMessage([]byte(`{"type":"result","subtype":"success"}`))
+		mt.CloseMessages()
+
+		for range client.Messages() {
+		}
+
+		if !hookCalled {
+			t.Error("PostToolUse hook was not called")
+		}
+		if receivedInput == nil {
+			t.Fatal("receivedInput is nil")
+		}
+		if receivedInput.ToolName != "Bash" {
+			t.Errorf("ToolName = %q, want 'Bash'", receivedInput.ToolName)
+		}
+		if receivedInput.ToolResponse != "hello\n" {
+			t.Errorf("ToolResponse = %v, want 'hello\\n'", receivedInput.ToolResponse)
+		}
+	})
+}
+

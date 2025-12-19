@@ -152,19 +152,20 @@ type PreCompactHook func(ctx context.Context, input *PreCompactInput, hookCtx *H
 // Use empty string to match all tools.
 func WithPreToolUseHook(matcher string, hook PreToolUseHook, opts ...HookOption) Option {
 	return func(c *config) {
-		if c.hooks == nil {
-			c.hooks = make(map[HookEvent][]hookMatcher)
-		}
+		c.initHookMaps()
 
 		hc := &hookConfig{}
 		for _, opt := range opts {
 			opt(hc)
 		}
 
+		callbackID := c.generateCallbackID()
+		c.hookCallbacks[callbackID] = hook
+
 		c.hooks[PreToolUse] = append(c.hooks[PreToolUse], hookMatcher{
-			matcher: matcher,
-			hooks:   []any{hook},
-			timeout: hc.timeout,
+			matcher:     matcher,
+			callbackIDs: []string{callbackID},
+			timeout:     hc.timeout,
 		})
 	}
 }
@@ -174,19 +175,20 @@ func WithPreToolUseHook(matcher string, hook PreToolUseHook, opts ...HookOption)
 // Use empty string to match all tools.
 func WithPostToolUseHook(matcher string, hook PostToolUseHook, opts ...HookOption) Option {
 	return func(c *config) {
-		if c.hooks == nil {
-			c.hooks = make(map[HookEvent][]hookMatcher)
-		}
+		c.initHookMaps()
 
 		hc := &hookConfig{}
 		for _, opt := range opts {
 			opt(hc)
 		}
 
+		callbackID := c.generateCallbackID()
+		c.hookCallbacks[callbackID] = hook
+
 		c.hooks[PostToolUse] = append(c.hooks[PostToolUse], hookMatcher{
-			matcher: matcher,
-			hooks:   []any{hook},
-			timeout: hc.timeout,
+			matcher:     matcher,
+			callbackIDs: []string{callbackID},
+			timeout:     hc.timeout,
 		})
 	}
 }
@@ -194,19 +196,20 @@ func WithPostToolUseHook(matcher string, hook PostToolUseHook, opts ...HookOptio
 // WithUserPromptSubmitHook registers a hook to be called when a user submits a prompt.
 func WithUserPromptSubmitHook(hook UserPromptSubmitHook, opts ...HookOption) Option {
 	return func(c *config) {
-		if c.hooks == nil {
-			c.hooks = make(map[HookEvent][]hookMatcher)
-		}
+		c.initHookMaps()
 
 		hc := &hookConfig{}
 		for _, opt := range opts {
 			opt(hc)
 		}
 
+		callbackID := c.generateCallbackID()
+		c.hookCallbacks[callbackID] = hook
+
 		c.hooks[UserPromptSubmit] = append(c.hooks[UserPromptSubmit], hookMatcher{
-			matcher: "",
-			hooks:   []any{hook},
-			timeout: hc.timeout,
+			matcher:     "",
+			callbackIDs: []string{callbackID},
+			timeout:     hc.timeout,
 		})
 	}
 }
@@ -214,19 +217,20 @@ func WithUserPromptSubmitHook(hook UserPromptSubmitHook, opts ...HookOption) Opt
 // WithStopHook registers a hook to be called when the agent stops.
 func WithStopHook(hook StopHook, opts ...HookOption) Option {
 	return func(c *config) {
-		if c.hooks == nil {
-			c.hooks = make(map[HookEvent][]hookMatcher)
-		}
+		c.initHookMaps()
 
 		hc := &hookConfig{}
 		for _, opt := range opts {
 			opt(hc)
 		}
 
+		callbackID := c.generateCallbackID()
+		c.hookCallbacks[callbackID] = hook
+
 		c.hooks[Stop] = append(c.hooks[Stop], hookMatcher{
-			matcher: "",
-			hooks:   []any{hook},
-			timeout: hc.timeout,
+			matcher:     "",
+			callbackIDs: []string{callbackID},
+			timeout:     hc.timeout,
 		})
 	}
 }
@@ -234,19 +238,20 @@ func WithStopHook(hook StopHook, opts ...HookOption) Option {
 // WithSubagentStopHook registers a hook to be called when a subagent stops.
 func WithSubagentStopHook(hook SubagentStopHook, opts ...HookOption) Option {
 	return func(c *config) {
-		if c.hooks == nil {
-			c.hooks = make(map[HookEvent][]hookMatcher)
-		}
+		c.initHookMaps()
 
 		hc := &hookConfig{}
 		for _, opt := range opts {
 			opt(hc)
 		}
 
+		callbackID := c.generateCallbackID()
+		c.hookCallbacks[callbackID] = hook
+
 		c.hooks[SubagentStop] = append(c.hooks[SubagentStop], hookMatcher{
-			matcher: "",
-			hooks:   []any{hook},
-			timeout: hc.timeout,
+			matcher:     "",
+			callbackIDs: []string{callbackID},
+			timeout:     hc.timeout,
 		})
 	}
 }
@@ -254,19 +259,20 @@ func WithSubagentStopHook(hook SubagentStopHook, opts ...HookOption) Option {
 // WithPreCompactHook registers a hook to be called before conversation compaction.
 func WithPreCompactHook(hook PreCompactHook, opts ...HookOption) Option {
 	return func(c *config) {
-		if c.hooks == nil {
-			c.hooks = make(map[HookEvent][]hookMatcher)
-		}
+		c.initHookMaps()
 
 		hc := &hookConfig{}
 		for _, opt := range opts {
 			opt(hc)
 		}
 
+		callbackID := c.generateCallbackID()
+		c.hookCallbacks[callbackID] = hook
+
 		c.hooks[PreCompact] = append(c.hooks[PreCompact], hookMatcher{
-			matcher: "",
-			hooks:   []any{hook},
-			timeout: hc.timeout,
+			matcher:     "",
+			callbackIDs: []string{callbackID},
+			timeout:     hc.timeout,
 		})
 	}
 }

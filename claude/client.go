@@ -86,6 +86,16 @@ func (c *Client) Connect(ctx context.Context) error {
 	go c.readMessages()
 
 	c.connected = true
+
+	// Send initialize request if hooks are configured
+	if len(c.cfg.hooks) > 0 {
+		if err := c.sendInitialize(ctx); err != nil {
+			c.connected = false
+			_ = c.transport.Close()
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -102,7 +112,7 @@ func (c *Client) readMessages() {
 }
 
 // parseMessage converts raw JSON into a Message type.
-// Returns nil if the message cannot be parsed.
+// Returns nil if the message cannot be parsed or if it was handled internally.
 func (c *Client) parseMessage(data []byte) Message {
 	var raw map[string]any
 	if err := json.Unmarshal(data, &raw); err != nil {
@@ -120,6 +130,9 @@ func (c *Client) parseMessage(data []byte) Message {
 		return c.parseSystemMessage(raw)
 	case "result":
 		return c.parseResultMessage(raw)
+	case "control_request":
+		c.handleControlRequest(raw)
+		return nil
 	default:
 		return nil
 	}
@@ -343,4 +356,174 @@ func (c *Client) IsConnected() bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.connected
+}
+
+// sendInitialize sends an initialize request with hook configurations to the CLI.
+func (c *Client) sendInitialize(ctx context.Context) error {
+	// Build hook definitions for the CLI
+	hookDefs := make(map[HookEvent][]InitializeHookDef)
+
+	for event, matchers := range c.cfg.hooks {
+		for _, m := range matchers {
+			def := InitializeHookDef{
+				Matcher:         m.matcher,
+				HookCallbackIDs: m.callbackIDs,
+			}
+			if m.timeout > 0 {
+				timeoutSecs := int(m.timeout.Seconds())
+				def.Timeout = &timeoutSecs
+			}
+			hookDefs[event] = append(hookDefs[event], def)
+		}
+	}
+
+	req := &ControlRequest{
+		Type:      "control_request",
+		RequestID: generateRequestID(),
+		Request: &ControlRequestBody{
+			Subtype:      ControlSubtypeInitialize,
+			InitHookDefs: hookDefs,
+		},
+	}
+
+	data, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+	data = append(data, '\n')
+
+	return c.transport.Send(ctx, data)
+}
+
+// handleControlRequest processes a control request from the CLI.
+func (c *Client) handleControlRequest(raw map[string]any) {
+	requestID, _ := raw["request_id"].(string)
+	request, ok := raw["request"].(map[string]any)
+	if !ok {
+		return
+	}
+
+	subtype, _ := request["subtype"].(string)
+	if subtype != "hook_callback" {
+		return
+	}
+
+	callbackID, _ := request["callback_id"].(string)
+	input, _ := request["input"].(map[string]any)
+
+	// Look up the callback
+	if c.cfg.hookCallbacks == nil {
+		return
+	}
+	callback, ok := c.cfg.hookCallbacks[callbackID]
+	if !ok {
+		return
+	}
+
+	// Extract hook event name to determine how to invoke
+	hookEventName, _ := input["hook_event_name"].(string)
+
+	var response *HookCallbackResponse
+	ctx := context.Background()
+	hookCtx := &HookContext{}
+
+	switch hookEventName {
+	case "PreToolUse":
+		if hook, ok := callback.(PreToolUseHook); ok {
+			hookInput := &PreToolUseInput{
+				ToolName:  getString(input, "tool_name"),
+				ToolInput: getMap(input, "tool_input"),
+				ToolUseID: getString(input, "tool_use_id"),
+			}
+			output, err := hook(ctx, hookInput, hookCtx)
+			response = c.buildHookResponse(output, err, PreToolUse)
+		}
+	case "PostToolUse":
+		if hook, ok := callback.(PostToolUseHook); ok {
+			hookInput := &PostToolUseInput{
+				ToolName:     getString(input, "tool_name"),
+				ToolInput:    getMap(input, "tool_input"),
+				ToolUseID:    getString(input, "tool_use_id"),
+				ToolResponse: input["tool_response"],
+				IsError:      getBool(input, "is_error"),
+			}
+			output, err := hook(ctx, hookInput, hookCtx)
+			response = c.buildHookResponse(output, err, PostToolUse)
+		}
+	}
+
+	if response == nil {
+		response = &HookCallbackResponse{Continue: true}
+	}
+
+	// Send the response
+	c.sendControlResponse(requestID, response)
+}
+
+func (c *Client) buildHookResponse(output *HookOutput, err error, event HookEvent) *HookCallbackResponse {
+	if err != nil || output == nil {
+		return &HookCallbackResponse{Continue: true}
+	}
+
+	resp := &HookCallbackResponse{
+		Continue: true,
+	}
+
+	if output.Continue != nil {
+		resp.Continue = *output.Continue
+	}
+
+	resp.StopReason = output.StopReason
+	resp.SystemMessage = output.SystemMessage
+	resp.Reason = output.Reason
+
+	if output.Decision != HookDecisionNone {
+		resp.HookSpecificOutput = &HookSpecificOutput{
+			HookEventName:      event,
+			UpdatedInput:       output.UpdatedInput,
+			AdditionalContext:  output.AdditionalContext,
+		}
+
+		switch output.Decision {
+		case HookDecisionAllow:
+			resp.HookSpecificOutput.PermissionDecision = "allow"
+		case HookDecisionDeny:
+			resp.HookSpecificOutput.PermissionDecision = "deny"
+			resp.HookSpecificOutput.PermissionDecisionReason = output.Reason
+		}
+	}
+
+	return resp
+}
+
+func (c *Client) sendControlResponse(requestID string, response *HookCallbackResponse) {
+	resp := NewControlResponseSuccess(requestID, response)
+	data, err := json.Marshal(resp)
+	if err != nil {
+		return
+	}
+	data = append(data, '\n')
+
+	c.mu.RLock()
+	transport := c.transport
+	c.mu.RUnlock()
+
+	if transport != nil {
+		_ = transport.Send(context.Background(), data)
+	}
+}
+
+func getString(m map[string]any, key string) string {
+	v, _ := m[key].(string)
+	return v
+}
+
+func getMap(m map[string]any, key string) map[string]any {
+	v, _ := m[key].(map[string]any)
+	return v
+}
+
+func getBool(m map[string]any, key string) bool {
+	v, _ := m[key].(bool)
+	return v
 }
