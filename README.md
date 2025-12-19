@@ -125,6 +125,29 @@ for msg := range client.Messages() {
 }
 ```
 
+## Examples
+
+The `examples/` directory contains runnable examples demonstrating SDK capabilities:
+
+| Example | Description |
+|---------|-------------|
+| [basic-query](examples/basic-query) | Simplest usage - send a prompt, print response |
+| [result-only](examples/result-only) | Get just the final answer, skip streaming |
+| [streaming](examples/streaming) | Real-time display of all message types |
+| [multi-turn](examples/multi-turn) | Interactive chat using the Client |
+| [tool-control](examples/tool-control) | Read-only agent (restrict available tools) |
+| [hooks-security](examples/hooks-security) | Block dangerous commands with pre-tool hooks |
+| [hooks-logging](examples/hooks-logging) | Audit all tool usage with timing |
+| [code-reviewer](examples/code-reviewer) | Practical agent that reviews code for issues |
+| [extended-thinking](examples/extended-thinking) | Enable Claude's reasoning mode |
+
+Run any example:
+
+```bash
+go run ./examples/basic-query
+go run ./examples/code-reviewer --path=./claude
+```
+
 ## Configuration Options
 
 ### Model Settings
