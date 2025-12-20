@@ -766,3 +766,234 @@ func TestFindCLI_FallbackLocations(t *testing.T) {
 		}
 	})
 }
+
+func TestBuildCommand_WithOutputFormat(t *testing.T) {
+	t.Run("includes output format flag", func(t *testing.T) {
+		cfg := &config{
+			outputFormat: &OutputFormat{
+				Type: "json_schema",
+				Schema: map[string]any{
+					"type": "object",
+				},
+			},
+		}
+		st := &SubprocessTransport{
+			cliPath: "/usr/bin/claude",
+			cfg:     cfg,
+		}
+
+		cmd := st.buildCommand()
+
+		containsOutputFormat := false
+		for i, arg := range cmd {
+			if arg == "--output-format" && i+1 < len(cmd) {
+				containsOutputFormat = true
+				break
+			}
+		}
+		if !containsOutputFormat {
+			t.Errorf("command should contain --output-format flag, got %v", cmd)
+		}
+	})
+}
+
+func TestBuildCommand_WithSandbox(t *testing.T) {
+	t.Run("includes sandbox flag when enabled", func(t *testing.T) {
+		cfg := &config{
+			sandbox: &SandboxSettings{
+				Enabled: true,
+			},
+		}
+		st := &SubprocessTransport{
+			cliPath: "/usr/bin/claude",
+			cfg:     cfg,
+		}
+
+		cmd := st.buildCommand()
+
+		containsSandbox := false
+		for _, arg := range cmd {
+			if arg == "--sandbox" {
+				containsSandbox = true
+				break
+			}
+		}
+		if !containsSandbox {
+			t.Errorf("command should contain --sandbox flag, got %v", cmd)
+		}
+	})
+
+	t.Run("includes sandbox auto-allow-bash flag", func(t *testing.T) {
+		cfg := &config{
+			sandbox: &SandboxSettings{
+				AutoAllowBashIfSandboxed: true,
+			},
+		}
+		st := &SubprocessTransport{
+			cliPath: "/usr/bin/claude",
+			cfg:     cfg,
+		}
+
+		cmd := st.buildCommand()
+
+		containsAutoAllow := false
+		for _, arg := range cmd {
+			if arg == "--sandbox-auto-allow-bash" {
+				containsAutoAllow = true
+				break
+			}
+		}
+		if !containsAutoAllow {
+			t.Errorf("command should contain --sandbox-auto-allow-bash flag, got %v", cmd)
+		}
+	})
+
+	t.Run("includes sandbox excluded commands", func(t *testing.T) {
+		cfg := &config{
+			sandbox: &SandboxSettings{
+				ExcludedCommands: []string{"git", "docker"},
+			},
+		}
+		st := &SubprocessTransport{
+			cliPath: "/usr/bin/claude",
+			cfg:     cfg,
+		}
+
+		cmd := st.buildCommand()
+
+		gitCount := 0
+		dockerCount := 0
+		for i, arg := range cmd {
+			if arg == "--sandbox-exclude-command" && i+1 < len(cmd) {
+				if cmd[i+1] == "git" {
+					gitCount++
+				}
+				if cmd[i+1] == "docker" {
+					dockerCount++
+				}
+			}
+		}
+		if gitCount != 1 || dockerCount != 1 {
+			t.Errorf("command should contain excluded commands git and docker, got %v", cmd)
+		}
+	})
+
+	t.Run("includes sandbox network config", func(t *testing.T) {
+		cfg := &config{
+			sandbox: &SandboxSettings{
+				Network: &SandboxNetworkConfig{
+					AllowUnixSockets:    []string{"/var/run/docker.sock"},
+					AllowAllUnixSockets: true,
+					AllowLocalBinding:   true,
+				},
+			},
+		}
+		st := &SubprocessTransport{
+			cliPath: "/usr/bin/claude",
+			cfg:     cfg,
+		}
+
+		cmd := st.buildCommand()
+
+		hasUnixSocket := false
+		hasAllUnixSockets := false
+		hasLocalBinding := false
+
+		for i, arg := range cmd {
+			if arg == "--sandbox-allow-unix-socket" && i+1 < len(cmd) && cmd[i+1] == "/var/run/docker.sock" {
+				hasUnixSocket = true
+			}
+			if arg == "--sandbox-allow-all-unix-sockets" {
+				hasAllUnixSockets = true
+			}
+			if arg == "--sandbox-allow-local-binding" {
+				hasLocalBinding = true
+			}
+		}
+
+		if !hasUnixSocket {
+			t.Error("command should contain --sandbox-allow-unix-socket /var/run/docker.sock")
+		}
+		if !hasAllUnixSockets {
+			t.Error("command should contain --sandbox-allow-all-unix-sockets")
+		}
+		if !hasLocalBinding {
+			t.Error("command should contain --sandbox-allow-local-binding")
+		}
+	})
+
+	t.Run("includes sandbox weaker nested flag", func(t *testing.T) {
+		cfg := &config{
+			sandbox: &SandboxSettings{
+				EnableWeakerNestedSandbox: true,
+			},
+		}
+		st := &SubprocessTransport{
+			cliPath: "/usr/bin/claude",
+			cfg:     cfg,
+		}
+
+		cmd := st.buildCommand()
+
+		containsWeakerNested := false
+		for _, arg := range cmd {
+			if arg == "--sandbox-weaker-nested" {
+				containsWeakerNested = true
+				break
+			}
+		}
+		if !containsWeakerNested {
+			t.Errorf("command should contain --sandbox-weaker-nested flag, got %v", cmd)
+		}
+	})
+}
+
+func TestBuildCommand_WithIncludePartialMessages(t *testing.T) {
+	t.Run("includes partial messages flag", func(t *testing.T) {
+		cfg := &config{
+			includePartialMessages: true,
+		}
+		st := &SubprocessTransport{
+			cliPath: "/usr/bin/claude",
+			cfg:     cfg,
+		}
+
+		cmd := st.buildCommand()
+
+		containsPartialMessages := false
+		for _, arg := range cmd {
+			if arg == "--include-partial-messages" {
+				containsPartialMessages = true
+				break
+			}
+		}
+		if !containsPartialMessages {
+			t.Errorf("command should contain --include-partial-messages flag, got %v", cmd)
+		}
+	})
+}
+
+func TestBuildCommand_WithForkSession(t *testing.T) {
+	t.Run("includes fork session flag", func(t *testing.T) {
+		cfg := &config{
+			forkSession: true,
+		}
+		st := &SubprocessTransport{
+			cliPath: "/usr/bin/claude",
+			cfg:     cfg,
+		}
+
+		cmd := st.buildCommand()
+
+		containsForkSession := false
+		for _, arg := range cmd {
+			if arg == "--fork-session" {
+				containsForkSession = true
+				break
+			}
+		}
+		if !containsForkSession {
+			t.Errorf("command should contain --fork-session flag, got %v", cmd)
+		}
+	})
+}
