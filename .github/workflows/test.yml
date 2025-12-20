@@ -29,6 +29,8 @@ jobs:
 
       - name: Run tests
         run: go test -v -race ./...
+        env:
+          GOEXPERIMENT: synctest
 
   coverage:
     name: Coverage
@@ -44,6 +46,8 @@ jobs:
 
       - name: Run tests with coverage
         run: go test -race -coverprofile=coverage.txt -covermode=atomic ./...
+        env:
+          GOEXPERIMENT: synctest
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
