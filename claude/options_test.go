@@ -226,6 +226,81 @@ func TestOptions(t *testing.T) {
 			t.Errorf("model = %q, want %q", cfg.model, "second")
 		}
 	})
+
+	t.Run("WithExtraArgs sets extra args map", func(t *testing.T) {
+		cfg := &config{}
+		applyOptions(cfg, WithExtraArgs(map[string]string{
+			"verbose":       "",
+			"output-format": "json",
+		}))
+
+		if len(cfg.extraArgs) != 2 {
+			t.Fatalf("extraArgs length = %d, want 2", len(cfg.extraArgs))
+		}
+		if cfg.extraArgs["verbose"] != "" {
+			t.Errorf("extraArgs[verbose] = %q, want empty string", cfg.extraArgs["verbose"])
+		}
+		if cfg.extraArgs["output-format"] != "json" {
+			t.Errorf("extraArgs[output-format] = %q, want %q", cfg.extraArgs["output-format"], "json")
+		}
+	})
+
+	t.Run("WithAddDirs sets directories", func(t *testing.T) {
+		cfg := &config{}
+		applyOptions(cfg, WithAddDirs("/path/to/dir1", "/path/to/dir2"))
+
+		if len(cfg.addDirs) != 2 {
+			t.Fatalf("addDirs length = %d, want 2", len(cfg.addDirs))
+		}
+		if cfg.addDirs[0] != "/path/to/dir1" {
+			t.Errorf("addDirs[0] = %q, want %q", cfg.addDirs[0], "/path/to/dir1")
+		}
+		if cfg.addDirs[1] != "/path/to/dir2" {
+			t.Errorf("addDirs[1] = %q, want %q", cfg.addDirs[1], "/path/to/dir2")
+		}
+	})
+
+	t.Run("WithSettings sets settings path", func(t *testing.T) {
+		cfg := &config{}
+		applyOptions(cfg, WithSettings("/path/to/settings.json"))
+
+		if cfg.settings != "/path/to/settings.json" {
+			t.Errorf("settings = %q, want %q", cfg.settings, "/path/to/settings.json")
+		}
+	})
+
+	t.Run("WithUser sets user identifier", func(t *testing.T) {
+		cfg := &config{}
+		applyOptions(cfg, WithUser("my-app-user-123"))
+
+		if cfg.user != "my-app-user-123" {
+			t.Errorf("user = %q, want %q", cfg.user, "my-app-user-123")
+		}
+	})
+
+	t.Run("WithBetas sets beta features", func(t *testing.T) {
+		cfg := &config{}
+		applyOptions(cfg, WithBetas("context-1m-2025-08-07", "another-beta"))
+
+		if len(cfg.betas) != 2 {
+			t.Fatalf("betas length = %d, want 2", len(cfg.betas))
+		}
+		if cfg.betas[0] != "context-1m-2025-08-07" {
+			t.Errorf("betas[0] = %q, want %q", cfg.betas[0], "context-1m-2025-08-07")
+		}
+		if cfg.betas[1] != "another-beta" {
+			t.Errorf("betas[1] = %q, want %q", cfg.betas[1], "another-beta")
+		}
+	})
+
+	t.Run("WithMaxBufferSize sets buffer size", func(t *testing.T) {
+		cfg := &config{}
+		applyOptions(cfg, WithMaxBufferSize(2048000))
+
+		if cfg.maxBufferSize != 2048000 {
+			t.Errorf("maxBufferSize = %d, want 2048000", cfg.maxBufferSize)
+		}
+	})
 }
 
 func TestHookOptions(t *testing.T) {

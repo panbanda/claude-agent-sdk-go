@@ -74,6 +74,14 @@ type config struct {
 
 	// Internal callback for tool permissions
 	canUseTool CanUseToolFunc
+
+	// Additional CLI options
+	extraArgs     map[string]string
+	addDirs       []string
+	settings      string
+	user          string
+	betas         []string
+	maxBufferSize int
 }
 
 // Option is a function that configures the client.
@@ -274,5 +282,49 @@ type PermissionResult struct {
 func WithCanUseTool(fn CanUseToolFunc) Option {
 	return func(c *config) {
 		c.canUseTool = fn
+	}
+}
+
+// WithExtraArgs passes arbitrary CLI flags.
+// Keys are flag names (without --), values are flag values.
+// Use empty string for boolean flags.
+func WithExtraArgs(args map[string]string) Option {
+	return func(c *config) {
+		c.extraArgs = args
+	}
+}
+
+// WithAddDirs adds additional directories for Claude to access.
+func WithAddDirs(dirs ...string) Option {
+	return func(c *config) {
+		c.addDirs = dirs
+	}
+}
+
+// WithSettings sets the path to a settings file.
+func WithSettings(path string) Option {
+	return func(c *config) {
+		c.settings = path
+	}
+}
+
+// WithUser sets a user identifier.
+func WithUser(user string) Option {
+	return func(c *config) {
+		c.user = user
+	}
+}
+
+// WithBetas enables SDK beta features.
+func WithBetas(betas ...string) Option {
+	return func(c *config) {
+		c.betas = betas
+	}
+}
+
+// WithMaxBufferSize sets the maximum buffer size for stdout.
+func WithMaxBufferSize(size int) Option {
+	return func(c *config) {
+		c.maxBufferSize = size
 	}
 }
