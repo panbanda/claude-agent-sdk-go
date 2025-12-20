@@ -223,7 +223,7 @@ func TestQueryCompletesOnResult(t *testing.T) {
 }
 
 func TestQueryContextCancellation(t *testing.T) {
-	synctest.Test(t, func(t *testing.T) { //nolint:thelper // synctest.Test passes t to our function
+	synctest.Test(t, func(t *testing.T) {
 		// Create a mock transport with a larger buffer to hold all messages
 		mt := &mockTransport{
 			messagesCh: make(chan []byte, 110),

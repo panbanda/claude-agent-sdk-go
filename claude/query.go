@@ -50,7 +50,7 @@ func Query(ctx context.Context, prompt string, opts ...Option) (<-chan Message, 
 	// Start goroutine to read messages and clean up
 	go func() {
 		defer close(out)
-		defer client.Close()
+		defer func() { _ = client.Close() }()
 
 		msgs := client.Messages()
 		if msgs == nil {

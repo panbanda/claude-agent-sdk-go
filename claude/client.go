@@ -1,3 +1,4 @@
+// Package claude provides a Go SDK for interacting with the Claude CLI.
 package claude
 
 import (
@@ -486,9 +487,9 @@ func (c *Client) buildHookResponse(output *HookOutput, err error, event HookEven
 
 		switch output.Decision {
 		case HookDecisionAllow:
-			resp.HookSpecificOutput.PermissionDecision = "allow"
+			resp.HookSpecificOutput.PermissionDecision = string(HookDecisionAllow)
 		case HookDecisionDeny:
-			resp.HookSpecificOutput.PermissionDecision = "deny"
+			resp.HookSpecificOutput.PermissionDecision = string(HookDecisionDeny)
 			resp.HookSpecificOutput.PermissionDecisionReason = output.Reason
 		case HookDecisionNone:
 			// Already handled by outer if check

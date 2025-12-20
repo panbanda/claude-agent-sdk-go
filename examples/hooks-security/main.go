@@ -15,7 +15,7 @@ import (
 	"github.com/panbanda/claude-agent-sdk-go/claude"
 )
 
-// blockedPatterns demonstrates command filtering (for demo purposes)
+// blockedPatterns demonstrates command filtering (for demo purposes).
 var blockedPatterns = []string{
 	"/etc",     // Block access to system config (for demo)
 	"/private", // Block access to private dirs (for demo)

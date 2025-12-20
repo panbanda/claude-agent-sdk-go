@@ -1,5 +1,10 @@
 version: "2"
 
+formatters:
+  enable:
+    - gofmt
+    - goimports
+
 run:
   timeout: 5m
   modules-download-mode: readonly
@@ -7,13 +12,10 @@ run:
 linters:
   enable:
     - errcheck
-    - gosimple
     - govet
     - ineffassign
     - staticcheck
     - unused
-    - gofmt
-    - goimports
     - misspell
     - unconvert
     - unparam
@@ -38,12 +40,37 @@ linters:
     - revive
     - rowserrcheck
     - sqlclosecheck
-    - stylecheck
     - thelper
     - tparallel
-    - typecheck
     - wastedassign
     - whitespace
+
+  exclusions:
+    rules:
+      # Exclude some linters from running on test files
+      - path: _test\.go
+        linters:
+          - dupl
+          - goconst
+          - gosec
+          - errcheck
+          - gocyclo
+          - revive
+          - godot
+          - errorlint
+          - govet
+          - staticcheck
+
+      # Exclude linting of vendored code
+      - path: vendor/
+        linters:
+          - all
+
+      # Exclude example files from some checks
+      - path: examples/
+        linters:
+          - revive
+          - errcheck
 
 linters-settings:
   errcheck:
@@ -95,30 +122,5 @@ linters-settings:
       - name: unreachable-code
       - name: redefines-builtin-id
 
-  stylecheck:
-    checks: ["all", "-ST1000", "-ST1003", "-ST1016"]
-
-issues:
-  exclude-rules:
-    # Exclude some linters from running on tests files
-    - path: _test\.go
-      linters:
-        - dupl
-        - goconst
-        - gosec
-        - errcheck
-        - gocyclo
-        - revive
-        - godot
-        - errorlint
-        - govet
-        - staticcheck
-        - stylecheck
-
-    # Exclude linting of vendored code
-    - path: vendor/
-      linters:
-        - all
-
-  max-same-issues: 0
-  max-issues-per-linter: 0
+output:
+  show-stats: true

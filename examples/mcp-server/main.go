@@ -44,7 +44,7 @@ func main() {
 		claude.WithMaxTurns(5),
 	)
 	if err != nil {
-		os.Remove(testFile)
+		_ = os.Remove(testFile)
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
@@ -64,7 +64,7 @@ func main() {
 	}
 
 	// Clean up test file
-	os.Remove(testFile)
+	_ = os.Remove(testFile)
 }
 
 // getExampleDir returns the directory containing this example.
