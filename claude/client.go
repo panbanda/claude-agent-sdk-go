@@ -40,11 +40,12 @@ import (
 //	    }
 //	}
 type Client struct {
-	cfg       *config
-	transport Transport
-	messages  chan Message
-	connected bool
-	mu        sync.RWMutex
+	cfg        *config
+	transport  Transport
+	messages   chan Message
+	connected  bool
+	serverInfo map[string]any
+	mu         sync.RWMutex
 }
 
 // NewClient creates a new Claude client with the given options.
@@ -231,6 +232,12 @@ func (c *Client) parseSystemMessage(raw map[string]any) *SystemMessage {
 
 	if data, ok := raw["data"].(map[string]any); ok {
 		msg.Data = data
+
+		if msg.Subtype == "init" {
+			c.mu.Lock()
+			c.serverInfo = data
+			c.mu.Unlock()
+		}
 	}
 
 	return msg
@@ -357,6 +364,105 @@ func (c *Client) IsConnected() bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.connected
+}
+
+// Interrupt sends an interrupt signal to stop the current operation.
+// This is only effective during an active query.
+func (c *Client) Interrupt(ctx context.Context) error {
+	c.mu.RLock()
+	if !c.connected {
+		c.mu.RUnlock()
+		return ErrNotConnected
+	}
+	transport := c.transport
+	c.mu.RUnlock()
+
+	req := &ControlRequest{
+		Type:      MessageTypeControlRequest,
+		RequestID: generateRequestID(),
+		Request: &ControlRequestBody{
+			Subtype: ControlSubtypeInterrupt,
+		},
+	}
+
+	data, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+	data = append(data, '\n')
+
+	return transport.Send(ctx, data)
+}
+
+// SetPermissionMode changes the permission mode during a conversation.
+// Valid modes: "default", "acceptEdits", "plan", "bypassPermissions".
+func (c *Client) SetPermissionMode(ctx context.Context, mode PermissionMode) error {
+	c.mu.RLock()
+	if !c.connected {
+		c.mu.RUnlock()
+		return ErrNotConnected
+	}
+	transport := c.transport
+	c.mu.RUnlock()
+
+	req := &ControlRequest{
+		Type:      MessageTypeControlRequest,
+		RequestID: generateRequestID(),
+		Request: &ControlRequestBody{
+			Subtype: ControlSubtypeSetPermissionMode,
+			Mode:    string(mode),
+		},
+	}
+
+	data, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+	data = append(data, '\n')
+
+	return transport.Send(ctx, data)
+}
+
+// SetModel changes the AI model during a conversation.
+// Pass empty string to use the default model.
+func (c *Client) SetModel(ctx context.Context, model string) error {
+	c.mu.RLock()
+	if !c.connected {
+		c.mu.RUnlock()
+		return ErrNotConnected
+	}
+	transport := c.transport
+	c.mu.RUnlock()
+
+	var modelPtr *string
+	if model != "" {
+		modelPtr = &model
+	}
+
+	req := &ControlRequest{
+		Type:      MessageTypeControlRequest,
+		RequestID: generateRequestID(),
+		Request: &ControlRequestBody{
+			Subtype: ControlSubtypeSetModel,
+			Model:   modelPtr,
+		},
+	}
+
+	data, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+	data = append(data, '\n')
+
+	return transport.Send(ctx, data)
+}
+
+// GetServerInfo returns server initialization info including available
+// commands and output styles. Returns nil if not available.
+func (c *Client) GetServerInfo() map[string]any {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.serverInfo
 }
 
 // sendInitialize sends an initialize request with hook configurations to the CLI.
