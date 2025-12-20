@@ -69,6 +69,9 @@ type config struct {
 	// Plugins
 	plugins []PluginConfig
 
+	// File checkpointing
+	enableFileCheckpointing bool
+
 	// Transport (for testing)
 	transport Transport
 
@@ -223,6 +226,19 @@ func WithMaxThinkingTokens(tokens int) Option {
 func WithMCPConfig(path string) Option {
 	return func(c *config) {
 		c.mcpConfig = path
+	}
+}
+
+// WithEnableFileCheckpointing enables tracking of file changes during the session.
+// When enabled, files can be rewound to their state at any user message
+// using Client.RewindFiles().
+//
+// To receive UserMessage UUIDs needed for rewinding, also use:
+//
+//	WithExtraArgs(map[string]string{"replay-user-messages": ""})
+func WithEnableFileCheckpointing(enabled bool) Option {
+	return func(c *config) {
+		c.enableFileCheckpointing = enabled
 	}
 }
 

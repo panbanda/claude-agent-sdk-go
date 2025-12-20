@@ -93,6 +93,11 @@ func (st *SubprocessTransport) buildCommand() []string {
 	cmd = st.addOutputOptions(cmd, cfg)
 	cmd = st.addSandboxOptions(cmd, cfg)
 
+	// File checkpointing
+	if cfg.enableFileCheckpointing {
+		cmd = append(cmd, "--enable-file-checkpointing")
+	}
+
 	// Streaming mode: use --input-format stream-json
 	cmd = append(cmd, "--input-format", "stream-json")
 

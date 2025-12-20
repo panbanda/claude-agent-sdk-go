@@ -308,6 +308,27 @@ func TestSubprocessTransport_BuildCommand(t *testing.T) {
 			t.Errorf("command should contain --mcp-config /path/to/mcp-config.json, got %v", cmd)
 		}
 	})
+
+	t.Run("includes enable file checkpointing flag", func(t *testing.T) {
+		cfg := &config{enableFileCheckpointing: true}
+		st := &SubprocessTransport{
+			cliPath: "/usr/bin/claude",
+			cfg:     cfg,
+		}
+
+		cmd := st.buildCommand()
+
+		containsCheckpointing := false
+		for _, arg := range cmd {
+			if arg == "--enable-file-checkpointing" {
+				containsCheckpointing = true
+				break
+			}
+		}
+		if !containsCheckpointing {
+			t.Errorf("command should contain --enable-file-checkpointing, got %v", cmd)
+		}
+	})
 }
 
 func TestSubprocessTransport_Connect(t *testing.T) {
