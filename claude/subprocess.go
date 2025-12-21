@@ -174,33 +174,44 @@ func (st *SubprocessTransport) addAdvancedOptions(cmd []string, cfg *config) []s
 		cmd = append(cmd, "--betas", strings.Join(cfg.betas, ","))
 	}
 
-	// Add agent definitions as JSON
-	for name, agent := range cfg.agents {
-		agentJSON, err := json.Marshal(map[string]any{
-			"name":        name,
-			"description": agent.Description,
-			"prompt":      agent.Prompt,
-			"tools":       agent.Tools,
-			"model":       agent.Model,
-		})
+	// Add agents as a single JSON dict (matching Python SDK)
+	if len(cfg.agents) > 0 {
+		agentsDict := make(map[string]any)
+		for name, agent := range cfg.agents {
+			agentMap := map[string]any{
+				"description": agent.Description,
+				"prompt":      agent.Prompt,
+			}
+			// Only include non-nil/non-empty fields (matching Python SDK behavior)
+			if agent.Tools != nil {
+				agentMap["tools"] = agent.Tools
+			}
+			if agent.Model != "" {
+				agentMap["model"] = agent.Model
+			}
+			agentsDict[name] = agentMap
+		}
+		agentsJSON, err := json.Marshal(agentsDict)
 		if err == nil {
-			cmd = append(cmd, "--agent-definition", string(agentJSON))
+			cmd = append(cmd, "--agents", string(agentsJSON))
 		}
 	}
 
-	// Add setting sources
-	for _, source := range cfg.settingSources {
-		cmd = append(cmd, "--setting-source", string(source))
+	// Add setting sources as comma-separated value (always included, matching Python SDK)
+	sourcesValue := ""
+	if len(cfg.settingSources) > 0 {
+		sources := make([]string, len(cfg.settingSources))
+		for i, s := range cfg.settingSources {
+			sources[i] = string(s)
+		}
+		sourcesValue = strings.Join(sources, ",")
 	}
+	cmd = append(cmd, "--setting-sources", sourcesValue)
 
-	// Add plugins
+	// Add plugin directories (matching Python SDK)
 	for _, plugin := range cfg.plugins {
-		pluginJSON, err := json.Marshal(map[string]any{
-			"type": plugin.Type,
-			"path": plugin.Path,
-		})
-		if err == nil {
-			cmd = append(cmd, "--plugin", string(pluginJSON))
+		if plugin.Type == "local" {
+			cmd = append(cmd, "--plugin-dir", plugin.Path)
 		}
 	}
 

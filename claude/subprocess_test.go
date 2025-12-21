@@ -1030,7 +1030,7 @@ func TestBuildCommand_WithForkSession(t *testing.T) {
 }
 
 func TestBuildCommand_WithAgents(t *testing.T) {
-	t.Run("includes agent definitions as JSON", func(t *testing.T) {
+	t.Run("includes agents as single JSON dict", func(t *testing.T) {
 		cfg := &config{
 			agents: map[string]AgentDefinition{
 				"code-reviewer": {
@@ -1050,22 +1050,26 @@ func TestBuildCommand_WithAgents(t *testing.T) {
 
 		containsAgentFlag := false
 		for i, arg := range cmd {
-			if arg == "--agent-definition" && i+1 < len(cmd) {
+			if arg == "--agents" && i+1 < len(cmd) {
 				containsAgentFlag = true
-				// Verify it contains JSON
+				// Verify it contains JSON dict with agent name as key
 				jsonStr := cmd[i+1]
 				if len(jsonStr) == 0 || jsonStr[0] != '{' {
-					t.Errorf("agent definition should be JSON, got %q", jsonStr)
+					t.Errorf("agents should be JSON dict, got %q", jsonStr)
+				}
+				// Verify JSON contains the agent name as a key
+				if !strings.Contains(jsonStr, `"code-reviewer"`) {
+					t.Errorf("agents JSON should contain agent name as key, got %q", jsonStr)
 				}
 				break
 			}
 		}
 		if !containsAgentFlag {
-			t.Errorf("command should contain --agent-definition, got %v", cmd)
+			t.Errorf("command should contain --agents, got %v", cmd)
 		}
 	})
 
-	t.Run("includes multiple agent definitions", func(t *testing.T) {
+	t.Run("multiple agents in single JSON dict", func(t *testing.T) {
 		cfg := &config{
 			agents: map[string]AgentDefinition{
 				"agent1": {Description: "Agent 1", Prompt: "Prompt 1"},
@@ -1079,18 +1083,24 @@ func TestBuildCommand_WithAgents(t *testing.T) {
 
 		cmd := st.buildCommand()
 
+		// Should have exactly one --agents flag
 		agentCount := 0
-		for _, arg := range cmd {
-			if arg == "--agent-definition" {
+		for i, arg := range cmd {
+			if arg == "--agents" {
 				agentCount++
+				// Verify both agents are in the JSON
+				jsonStr := cmd[i+1]
+				if !strings.Contains(jsonStr, `"agent1"`) || !strings.Contains(jsonStr, `"agent2"`) {
+					t.Errorf("agents JSON should contain both agent names, got %q", jsonStr)
+				}
 			}
 		}
-		if agentCount != 2 {
-			t.Errorf("command should contain 2 --agent-definition flags, got %d", agentCount)
+		if agentCount != 1 {
+			t.Errorf("command should contain exactly 1 --agents flag, got %d", agentCount)
 		}
 	})
 
-	t.Run("no agent flags when no agents", func(t *testing.T) {
+	t.Run("no agents flag when no agents", func(t *testing.T) {
 		cfg := &config{}
 		st := &SubprocessTransport{
 			cliPath: "/usr/bin/claude",
@@ -1100,15 +1110,43 @@ func TestBuildCommand_WithAgents(t *testing.T) {
 		cmd := st.buildCommand()
 
 		for _, arg := range cmd {
-			if arg == "--agent-definition" {
-				t.Errorf("command should not contain --agent-definition when no agents configured")
+			if arg == "--agents" {
+				t.Errorf("command should not contain --agents when no agents configured")
+			}
+		}
+	})
+
+	t.Run("omits nil/empty fields from agent JSON", func(t *testing.T) {
+		cfg := &config{
+			agents: map[string]AgentDefinition{
+				"minimal": {Description: "Minimal agent", Prompt: "You are minimal"},
+			},
+		}
+		st := &SubprocessTransport{
+			cliPath: "/usr/bin/claude",
+			cfg:     cfg,
+		}
+
+		cmd := st.buildCommand()
+
+		for i, arg := range cmd {
+			if arg == "--agents" && i+1 < len(cmd) {
+				jsonStr := cmd[i+1]
+				// Should NOT contain "tools" or "model" keys for minimal agent
+				if strings.Contains(jsonStr, `"tools"`) {
+					t.Errorf("agents JSON should not contain nil tools, got %q", jsonStr)
+				}
+				if strings.Contains(jsonStr, `"model"`) {
+					t.Errorf("agents JSON should not contain empty model, got %q", jsonStr)
+				}
+				break
 			}
 		}
 	})
 }
 
 func TestBuildCommand_WithSettingSources(t *testing.T) {
-	t.Run("includes single setting source", func(t *testing.T) {
+	t.Run("includes single setting source as comma-separated", func(t *testing.T) {
 		cfg := &config{
 			settingSources: []SettingSource{SettingSourceUser},
 		}
@@ -1119,19 +1157,19 @@ func TestBuildCommand_WithSettingSources(t *testing.T) {
 
 		cmd := st.buildCommand()
 
-		containsSettingSource := false
+		containsSettingSources := false
 		for i, arg := range cmd {
-			if arg == "--setting-source" && i+1 < len(cmd) && cmd[i+1] == "user" {
-				containsSettingSource = true
+			if arg == "--setting-sources" && i+1 < len(cmd) && cmd[i+1] == "user" {
+				containsSettingSources = true
 				break
 			}
 		}
-		if !containsSettingSource {
-			t.Errorf("command should contain --setting-source user, got %v", cmd)
+		if !containsSettingSources {
+			t.Errorf("command should contain --setting-sources user, got %v", cmd)
 		}
 	})
 
-	t.Run("includes multiple setting sources", func(t *testing.T) {
+	t.Run("includes multiple setting sources as comma-separated", func(t *testing.T) {
 		cfg := &config{
 			settingSources: []SettingSource{
 				SettingSourceUser,
@@ -1146,38 +1184,23 @@ func TestBuildCommand_WithSettingSources(t *testing.T) {
 
 		cmd := st.buildCommand()
 
+		// Should have exactly one --setting-sources flag with comma-separated values
 		sourceCount := 0
-		for _, arg := range cmd {
-			if arg == "--setting-source" {
-				sourceCount++
-			}
-		}
-		if sourceCount != 3 {
-			t.Errorf("command should contain 3 --setting-source flags, got %d", sourceCount)
-		}
-
-		// Verify order
-		foundUser := false
-		foundProject := false
-		foundLocal := false
 		for i, arg := range cmd {
-			if arg == "--setting-source" && i+1 < len(cmd) {
-				switch cmd[i+1] {
-				case "user":
-					foundUser = true
-				case "project":
-					foundProject = true
-				case "local":
-					foundLocal = true
+			if arg == "--setting-sources" {
+				sourceCount++
+				value := cmd[i+1]
+				if value != "user,project,local" {
+					t.Errorf("setting sources should be comma-separated, got %q", value)
 				}
 			}
 		}
-		if !foundUser || !foundProject || !foundLocal {
-			t.Errorf("command should contain all three setting sources")
+		if sourceCount != 1 {
+			t.Errorf("command should contain exactly 1 --setting-sources flag, got %d", sourceCount)
 		}
 	})
 
-	t.Run("no setting source flags when empty", func(t *testing.T) {
+	t.Run("always includes setting-sources flag even when empty", func(t *testing.T) {
 		cfg := &config{}
 		st := &SubprocessTransport{
 			cliPath: "/usr/bin/claude",
@@ -1186,16 +1209,24 @@ func TestBuildCommand_WithSettingSources(t *testing.T) {
 
 		cmd := st.buildCommand()
 
-		for _, arg := range cmd {
-			if arg == "--setting-source" {
-				t.Errorf("command should not contain --setting-source when no sources configured")
+		containsSettingSources := false
+		for i, arg := range cmd {
+			if arg == "--setting-sources" && i+1 < len(cmd) {
+				containsSettingSources = true
+				if cmd[i+1] != "" {
+					t.Errorf("setting sources should be empty string when no sources, got %q", cmd[i+1])
+				}
+				break
 			}
+		}
+		if !containsSettingSources {
+			t.Errorf("command should always contain --setting-sources (matching Python SDK), got %v", cmd)
 		}
 	})
 }
 
 func TestBuildCommand_WithPlugins(t *testing.T) {
-	t.Run("includes single plugin as JSON", func(t *testing.T) {
+	t.Run("includes single plugin as path", func(t *testing.T) {
 		cfg := &config{
 			plugins: []PluginConfig{
 				{Type: "local", Path: "/path/to/plugin"},
@@ -1210,18 +1241,18 @@ func TestBuildCommand_WithPlugins(t *testing.T) {
 
 		containsPluginFlag := false
 		for i, arg := range cmd {
-			if arg == "--plugin" && i+1 < len(cmd) {
+			if arg == "--plugin-dir" && i+1 < len(cmd) {
 				containsPluginFlag = true
-				// Verify it contains JSON
-				jsonStr := cmd[i+1]
-				if len(jsonStr) == 0 || jsonStr[0] != '{' {
-					t.Errorf("plugin should be JSON, got %q", jsonStr)
+				// Verify it's just the path, not JSON
+				path := cmd[i+1]
+				if path != "/path/to/plugin" {
+					t.Errorf("plugin-dir should be path, got %q", path)
 				}
 				break
 			}
 		}
 		if !containsPluginFlag {
-			t.Errorf("command should contain --plugin, got %v", cmd)
+			t.Errorf("command should contain --plugin-dir, got %v", cmd)
 		}
 	})
 
@@ -1241,12 +1272,12 @@ func TestBuildCommand_WithPlugins(t *testing.T) {
 
 		pluginCount := 0
 		for _, arg := range cmd {
-			if arg == "--plugin" {
+			if arg == "--plugin-dir" {
 				pluginCount++
 			}
 		}
 		if pluginCount != 2 {
-			t.Errorf("command should contain 2 --plugin flags, got %d", pluginCount)
+			t.Errorf("command should contain 2 --plugin-dir flags, got %d", pluginCount)
 		}
 	})
 
@@ -1260,9 +1291,34 @@ func TestBuildCommand_WithPlugins(t *testing.T) {
 		cmd := st.buildCommand()
 
 		for _, arg := range cmd {
-			if arg == "--plugin" {
-				t.Errorf("command should not contain --plugin when no plugins configured")
+			if arg == "--plugin-dir" {
+				t.Errorf("command should not contain --plugin-dir when no plugins configured")
 			}
+		}
+	})
+
+	t.Run("only includes local plugins", func(t *testing.T) {
+		cfg := &config{
+			plugins: []PluginConfig{
+				{Type: "local", Path: "/path/to/plugin1"},
+				{Type: "remote", Path: "https://example.com/plugin"}, // Should be skipped
+			},
+		}
+		st := &SubprocessTransport{
+			cliPath: "/usr/bin/claude",
+			cfg:     cfg,
+		}
+
+		cmd := st.buildCommand()
+
+		pluginCount := 0
+		for _, arg := range cmd {
+			if arg == "--plugin-dir" {
+				pluginCount++
+			}
+		}
+		if pluginCount != 1 {
+			t.Errorf("command should contain only 1 --plugin-dir flag for local plugin, got %d", pluginCount)
 		}
 	})
 }
