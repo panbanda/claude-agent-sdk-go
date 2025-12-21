@@ -387,3 +387,162 @@ func applyOptions(cfg *config, opts ...Option) {
 		opt(cfg)
 	}
 }
+
+func TestWithOutputFormat(t *testing.T) {
+	t.Run("sets output format", func(t *testing.T) {
+		format := &OutputFormat{
+			Type: OutputFormatTypeJSONSchema,
+			Schema: map[string]any{
+				"type": "object",
+			},
+		}
+
+		cfg := &config{}
+		applyOptions(cfg, WithOutputFormat(format))
+
+		if cfg.outputFormat == nil {
+			t.Fatal("outputFormat should not be nil")
+		}
+
+		if cfg.outputFormat.Type != OutputFormatTypeJSONSchema {
+			t.Errorf("outputFormat.Type = %q, want %q", cfg.outputFormat.Type, OutputFormatTypeJSONSchema)
+		}
+
+		if cfg.outputFormat.Schema == nil {
+			t.Error("outputFormat.Schema should not be nil")
+		}
+	})
+}
+
+func TestWithJSONSchema(t *testing.T) {
+	t.Run("creates output format with schema", func(t *testing.T) {
+		schema := map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"answer": map[string]any{"type": "string"},
+			},
+		}
+
+		cfg := &config{}
+		applyOptions(cfg, WithJSONSchema(schema))
+
+		if cfg.outputFormat == nil {
+			t.Fatal("outputFormat should not be nil")
+		}
+
+		if cfg.outputFormat.Type != OutputFormatTypeJSONSchema {
+			t.Errorf("outputFormat.Type = %q, want %q", cfg.outputFormat.Type, OutputFormatTypeJSONSchema)
+		}
+
+		if cfg.outputFormat.Schema == nil {
+			t.Fatal("outputFormat.Schema should not be nil")
+		}
+
+		props, ok := cfg.outputFormat.Schema["properties"].(map[string]any)
+		if !ok {
+			t.Fatal("schema properties should be map[string]any")
+		}
+
+		if _, exists := props["answer"]; !exists {
+			t.Error("schema should have 'answer' property")
+		}
+	})
+}
+
+func TestWithSandbox(t *testing.T) {
+	t.Run("sets sandbox settings", func(t *testing.T) {
+		settings := &SandboxSettings{
+			Enabled:                  true,
+			AutoAllowBashIfSandboxed: true,
+			ExcludedCommands:         []string{"git", "docker"},
+		}
+
+		cfg := &config{}
+		applyOptions(cfg, WithSandbox(settings))
+
+		if cfg.sandbox == nil {
+			t.Fatal("sandbox should not be nil")
+		}
+
+		if !cfg.sandbox.Enabled {
+			t.Error("sandbox.Enabled should be true")
+		}
+
+		if !cfg.sandbox.AutoAllowBashIfSandboxed {
+			t.Error("sandbox.AutoAllowBashIfSandboxed should be true")
+		}
+
+		if len(cfg.sandbox.ExcludedCommands) != 2 {
+			t.Errorf("sandbox.ExcludedCommands length = %d, want 2", len(cfg.sandbox.ExcludedCommands))
+		}
+	})
+
+	t.Run("sets sandbox with network config", func(t *testing.T) {
+		settings := &SandboxSettings{
+			Enabled: true,
+			Network: &SandboxNetworkConfig{
+				AllowUnixSockets:  []string{"/var/run/docker.sock"},
+				AllowLocalBinding: true,
+			},
+		}
+
+		cfg := &config{}
+		applyOptions(cfg, WithSandbox(settings))
+
+		if cfg.sandbox == nil {
+			t.Fatal("sandbox should not be nil")
+		}
+
+		if cfg.sandbox.Network == nil {
+			t.Fatal("sandbox.Network should not be nil")
+		}
+
+		if len(cfg.sandbox.Network.AllowUnixSockets) != 1 {
+			t.Errorf("AllowUnixSockets length = %d, want 1", len(cfg.sandbox.Network.AllowUnixSockets))
+		}
+
+		if !cfg.sandbox.Network.AllowLocalBinding {
+			t.Error("AllowLocalBinding should be true")
+		}
+	})
+}
+
+func TestWithIncludePartialMessages(t *testing.T) {
+	t.Run("enables partial messages", func(t *testing.T) {
+		cfg := &config{}
+		applyOptions(cfg, WithIncludePartialMessages(true))
+
+		if !cfg.includePartialMessages {
+			t.Error("includePartialMessages should be true")
+		}
+	})
+
+	t.Run("disables partial messages", func(t *testing.T) {
+		cfg := &config{}
+		applyOptions(cfg, WithIncludePartialMessages(false))
+
+		if cfg.includePartialMessages {
+			t.Error("includePartialMessages should be false")
+		}
+	})
+}
+
+func TestWithForkSession(t *testing.T) {
+	t.Run("enables fork session", func(t *testing.T) {
+		cfg := &config{}
+		applyOptions(cfg, WithForkSession(true))
+
+		if !cfg.forkSession {
+			t.Error("forkSession should be true")
+		}
+	})
+
+	t.Run("disables fork session", func(t *testing.T) {
+		cfg := &config{}
+		applyOptions(cfg, WithForkSession(false))
+
+		if cfg.forkSession {
+			t.Error("forkSession should be false")
+		}
+	})
+}

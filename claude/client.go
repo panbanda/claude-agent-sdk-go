@@ -132,6 +132,8 @@ func (c *Client) parseMessage(data []byte) Message {
 		return c.parseSystemMessage(raw)
 	case "result":
 		return c.parseResultMessage(raw)
+	case "stream_event":
+		return c.parseStreamEvent(raw)
 	case MessageTypeControlRequest:
 		c.handleControlRequest(raw)
 		return nil
@@ -287,6 +289,25 @@ func (c *Client) parseResultMessage(raw map[string]any) *ResultMessage {
 	}
 
 	return msg
+}
+
+func (c *Client) parseStreamEvent(raw map[string]any) *StreamEvent {
+	event := &StreamEvent{}
+
+	if uuid, ok := raw["uuid"].(string); ok {
+		event.UUID = uuid
+	}
+	if sessionID, ok := raw["session_id"].(string); ok {
+		event.SessionID = sessionID
+	}
+	if e, ok := raw["event"].(map[string]any); ok {
+		event.Event = e
+	}
+	if parentID, ok := raw["parent_tool_use_id"].(string); ok {
+		event.ParentToolUseID = parentID
+	}
+
+	return event
 }
 
 // Close disconnects from the Claude CLI and releases resources.

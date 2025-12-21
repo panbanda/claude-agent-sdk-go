@@ -1060,3 +1060,80 @@ func TestClient_GetServerInfo_CapturedFromInit(t *testing.T) {
 		}
 	})
 }
+
+func TestParseStreamEvent(t *testing.T) {
+	t.Run("parses stream event with all fields", func(t *testing.T) {
+		mt := newMockTransport()
+		client := NewClient(WithTransport(mt))
+		_ = client.Connect(context.Background())
+		defer client.Close()
+
+		streamEvent := map[string]any{
+			"type":       "stream_event",
+			"uuid":       "event-uuid-123",
+			"session_id": "sess-456",
+			"event": map[string]any{
+				"type":  "content_block_delta",
+				"index": 0.0,
+				"delta": map[string]any{
+					"type": "text_delta",
+					"text": "Hello",
+				},
+			},
+			"parent_tool_use_id": "tool-789",
+		}
+		msgBytes, _ := json.Marshal(streamEvent)
+		mt.QueueMessage(msgBytes)
+		mt.CloseMessages()
+
+		msg := <-client.Messages()
+		se, ok := msg.(*StreamEvent)
+		if !ok {
+			t.Fatalf("expected *StreamEvent, got %T", msg)
+		}
+		if se.UUID != "event-uuid-123" {
+			t.Errorf("UUID = %q, want 'event-uuid-123'", se.UUID)
+		}
+		if se.SessionID != "sess-456" {
+			t.Errorf("SessionID = %q, want 'sess-456'", se.SessionID)
+		}
+		if se.ParentToolUseID != "tool-789" {
+			t.Errorf("ParentToolUseID = %q, want 'tool-789'", se.ParentToolUseID)
+		}
+		if se.Event == nil {
+			t.Fatal("Event should not be nil")
+		}
+		eventType, _ := se.Event["type"].(string)
+		if eventType != "content_block_delta" {
+			t.Errorf("Event[type] = %q, want 'content_block_delta'", eventType)
+		}
+	})
+
+	t.Run("handles stream event without parent_tool_use_id", func(t *testing.T) {
+		mt := newMockTransport()
+		client := NewClient(WithTransport(mt))
+		_ = client.Connect(context.Background())
+		defer client.Close()
+
+		streamEvent := map[string]any{
+			"type":       "stream_event",
+			"uuid":       "event-123",
+			"session_id": "sess-456",
+			"event": map[string]any{
+				"type": "message_start",
+			},
+		}
+		msgBytes, _ := json.Marshal(streamEvent)
+		mt.QueueMessage(msgBytes)
+		mt.CloseMessages()
+
+		msg := <-client.Messages()
+		se, ok := msg.(*StreamEvent)
+		if !ok {
+			t.Fatalf("expected *StreamEvent, got %T", msg)
+		}
+		if se.ParentToolUseID != "" {
+			t.Errorf("ParentToolUseID = %q, want empty", se.ParentToolUseID)
+		}
+	})
+}

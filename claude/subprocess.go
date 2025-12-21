@@ -3,6 +3,7 @@ package claude
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -89,6 +90,8 @@ func (st *SubprocessTransport) buildCommand() []string {
 	cmd = st.addToolOptions(cmd, cfg)
 	cmd = st.addSessionOptions(cmd, cfg)
 	cmd = st.addAdvancedOptions(cmd, cfg)
+	cmd = st.addOutputOptions(cmd, cfg)
+	cmd = st.addSandboxOptions(cmd, cfg)
 
 	// Streaming mode: use --input-format stream-json
 	cmd = append(cmd, "--input-format", "stream-json")
@@ -144,6 +147,9 @@ func (st *SubprocessTransport) addSessionOptions(cmd []string, cfg *config) []st
 	if cfg.mcpConfig != "" {
 		cmd = append(cmd, "--mcp-config", cfg.mcpConfig)
 	}
+	if cfg.forkSession {
+		cmd = append(cmd, "--fork-session")
+	}
 	return cmd
 }
 
@@ -166,6 +172,62 @@ func (st *SubprocessTransport) addAdvancedOptions(cmd []string, cfg *config) []s
 	// not a CLI flag. Python SDK passes it to anyio.open_process(user=...).
 	if len(cfg.betas) > 0 {
 		cmd = append(cmd, "--betas", strings.Join(cfg.betas, ","))
+	}
+	return cmd
+}
+
+// addOutputOptions adds output format and streaming options.
+func (st *SubprocessTransport) addOutputOptions(cmd []string, cfg *config) []string {
+	// Extract schema from output_format and pass as --json-schema (matching Python SDK)
+	if cfg.outputFormat != nil && cfg.outputFormat.Type == OutputFormatTypeJSONSchema && cfg.outputFormat.Schema != nil {
+		schemaJSON, err := json.Marshal(cfg.outputFormat.Schema)
+		if err == nil {
+			cmd = append(cmd, "--json-schema", string(schemaJSON))
+		}
+	}
+	if cfg.includePartialMessages {
+		cmd = append(cmd, "--include-partial-messages")
+	}
+	return cmd
+}
+
+// addSandboxOptions adds sandbox configuration options.
+func (st *SubprocessTransport) addSandboxOptions(cmd []string, cfg *config) []string {
+	if cfg.sandbox == nil {
+		return cmd
+	}
+	if cfg.sandbox.Enabled {
+		cmd = append(cmd, "--sandbox")
+	}
+	if cfg.sandbox.AutoAllowBashIfSandboxed {
+		cmd = append(cmd, "--sandbox-auto-allow-bash")
+	}
+	for _, excludedCmd := range cfg.sandbox.ExcludedCommands {
+		cmd = append(cmd, "--sandbox-exclude-command", excludedCmd)
+	}
+	if cfg.sandbox.AllowUnsandboxedCommands {
+		cmd = append(cmd, "--sandbox-allow-unsandboxed")
+	}
+	cmd = st.addSandboxNetworkOptions(cmd, cfg.sandbox)
+	if cfg.sandbox.EnableWeakerNestedSandbox {
+		cmd = append(cmd, "--sandbox-weaker-nested")
+	}
+	return cmd
+}
+
+// addSandboxNetworkOptions adds sandbox network configuration options.
+func (st *SubprocessTransport) addSandboxNetworkOptions(cmd []string, sandbox *SandboxSettings) []string {
+	if sandbox.Network == nil {
+		return cmd
+	}
+	for _, socket := range sandbox.Network.AllowUnixSockets {
+		cmd = append(cmd, "--sandbox-allow-unix-socket", socket)
+	}
+	if sandbox.Network.AllowAllUnixSockets {
+		cmd = append(cmd, "--sandbox-allow-all-unix-sockets")
+	}
+	if sandbox.Network.AllowLocalBinding {
+		cmd = append(cmd, "--sandbox-allow-local-binding")
 	}
 	return cmd
 }

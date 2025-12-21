@@ -82,6 +82,12 @@ type config struct {
 	user          string
 	betas         []string
 	maxBufferSize int
+
+	// Advanced options
+	outputFormat           *OutputFormat
+	sandbox                *SandboxSettings
+	includePartialMessages bool
+	forkSession            bool
 }
 
 // Option is a function that configures the client.
@@ -329,5 +335,46 @@ func WithBetas(betas ...string) Option {
 func WithMaxBufferSize(size int) Option {
 	return func(c *config) {
 		c.maxBufferSize = size
+	}
+}
+
+// WithOutputFormat configures structured output with JSON schema validation.
+// The schema must be a valid JSON schema that Claude's output will conform to.
+func WithOutputFormat(format *OutputFormat) Option {
+	return func(c *config) {
+		c.outputFormat = format
+	}
+}
+
+// WithJSONSchema is a convenience function for structured JSON output.
+func WithJSONSchema(schema map[string]any) Option {
+	return func(c *config) {
+		c.outputFormat = &OutputFormat{
+			Type:   OutputFormatTypeJSONSchema,
+			Schema: schema,
+		}
+	}
+}
+
+// WithSandbox configures bash command sandboxing.
+func WithSandbox(settings *SandboxSettings) Option {
+	return func(c *config) {
+		c.sandbox = settings
+	}
+}
+
+// WithIncludePartialMessages enables streaming of partial message events.
+// This is useful for real-time UIs that show text as it's generated.
+func WithIncludePartialMessages(enabled bool) Option {
+	return func(c *config) {
+		c.includePartialMessages = enabled
+	}
+}
+
+// WithForkSession causes resumed sessions to fork to a new session ID
+// rather than continuing the previous session.
+func WithForkSession(enabled bool) Option {
+	return func(c *config) {
+		c.forkSession = enabled
 	}
 }
