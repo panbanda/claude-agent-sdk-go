@@ -350,7 +350,7 @@ func WithOutputFormat(format *OutputFormat) Option {
 func WithJSONSchema(schema map[string]any) Option {
 	return func(c *config) {
 		c.outputFormat = &OutputFormat{
-			Type:   "json_schema",
+			Type:   OutputFormatTypeJSONSchema,
 			Schema: schema,
 		}
 	}

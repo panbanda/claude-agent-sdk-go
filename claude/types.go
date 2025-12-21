@@ -1,9 +1,17 @@
 package claude
 
+// OutputFormatType specifies the type of output format.
+type OutputFormatType string
+
+const (
+	// OutputFormatTypeJSONSchema enables JSON schema validation for structured output.
+	OutputFormatTypeJSONSchema OutputFormatType = "json_schema"
+)
+
 // OutputFormat configures structured output with JSON schema validation.
 type OutputFormat struct {
 	// Type is the output format type. Currently only "json_schema" is supported.
-	Type string `json:"type"`
+	Type OutputFormatType `json:"type"`
 
 	// Schema is the JSON schema for validating output.
 	Schema map[string]any `json:"schema"`

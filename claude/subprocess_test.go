@@ -772,7 +772,7 @@ func TestBuildCommand_WithOutputFormat(t *testing.T) {
 	t.Run("includes json-schema flag with schema only", func(t *testing.T) {
 		cfg := &config{
 			outputFormat: &OutputFormat{
-				Type: "json_schema",
+				Type: OutputFormatTypeJSONSchema,
 				Schema: map[string]any{
 					"type": "object",
 				},

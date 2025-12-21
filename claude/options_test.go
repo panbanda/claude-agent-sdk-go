@@ -391,7 +391,7 @@ func applyOptions(cfg *config, opts ...Option) {
 func TestWithOutputFormat(t *testing.T) {
 	t.Run("sets output format", func(t *testing.T) {
 		format := &OutputFormat{
-			Type: "json_schema",
+			Type: OutputFormatTypeJSONSchema,
 			Schema: map[string]any{
 				"type": "object",
 			},
@@ -404,8 +404,8 @@ func TestWithOutputFormat(t *testing.T) {
 			t.Fatal("outputFormat should not be nil")
 		}
 
-		if cfg.outputFormat.Type != "json_schema" {
-			t.Errorf("outputFormat.Type = %q, want 'json_schema'", cfg.outputFormat.Type)
+		if cfg.outputFormat.Type != OutputFormatTypeJSONSchema {
+			t.Errorf("outputFormat.Type = %q, want %q", cfg.outputFormat.Type, OutputFormatTypeJSONSchema)
 		}
 
 		if cfg.outputFormat.Schema == nil {
@@ -430,8 +430,8 @@ func TestWithJSONSchema(t *testing.T) {
 			t.Fatal("outputFormat should not be nil")
 		}
 
-		if cfg.outputFormat.Type != "json_schema" {
-			t.Errorf("outputFormat.Type = %q, want 'json_schema'", cfg.outputFormat.Type)
+		if cfg.outputFormat.Type != OutputFormatTypeJSONSchema {
+			t.Errorf("outputFormat.Type = %q, want %q", cfg.outputFormat.Type, OutputFormatTypeJSONSchema)
 		}
 
 		if cfg.outputFormat.Schema == nil {

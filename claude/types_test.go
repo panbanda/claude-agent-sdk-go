@@ -14,12 +14,12 @@ func TestOutputFormat_JSON(t *testing.T) {
 	}
 
 	format := &OutputFormat{
-		Type:   "json_schema",
+		Type:   OutputFormatTypeJSONSchema,
 		Schema: schema,
 	}
 
-	if format.Type != "json_schema" {
-		t.Errorf("expected type 'json_schema', got '%s'", format.Type)
+	if format.Type != OutputFormatTypeJSONSchema {
+		t.Errorf("expected type %q, got %q", OutputFormatTypeJSONSchema, format.Type)
 	}
 
 	if format.Schema == nil {
