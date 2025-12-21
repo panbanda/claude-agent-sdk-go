@@ -147,7 +147,7 @@ func (st *SubprocessTransport) addSessionOptions(cmd []string, cfg *config) []st
 	return cmd
 }
 
-// addAdvancedOptions adds extra args, directories, settings, user, and betas.
+// addAdvancedOptions adds extra args, directories, settings, and betas.
 func (st *SubprocessTransport) addAdvancedOptions(cmd []string, cfg *config) []string {
 	for key, value := range cfg.extraArgs {
 		if value == "" {
@@ -162,11 +162,10 @@ func (st *SubprocessTransport) addAdvancedOptions(cmd []string, cfg *config) []s
 	if cfg.settings != "" {
 		cmd = append(cmd, "--settings", cfg.settings)
 	}
-	if cfg.user != "" {
-		cmd = append(cmd, "--user", cfg.user)
-	}
-	for _, beta := range cfg.betas {
-		cmd = append(cmd, "--beta", beta)
+	// Note: cfg.user is for subprocess execution context (reserved for future use),
+	// not a CLI flag. Python SDK passes it to anyio.open_process(user=...).
+	if len(cfg.betas) > 0 {
+		cmd = append(cmd, "--betas", strings.Join(cfg.betas, ","))
 	}
 	return cmd
 }

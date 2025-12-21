@@ -591,7 +591,9 @@ func TestSubprocessTransport_BuildCommand_AllOptions(t *testing.T) {
 		}
 	})
 
-	t.Run("includes user flag when set", func(t *testing.T) {
+	t.Run("user option does not become CLI flag", func(t *testing.T) {
+		// User option is for subprocess execution context (like Python's anyio.open_process),
+		// not a CLI flag. Verify it's not passed to the command.
 		cfg := &config{user: "my-app-user-123"}
 		st := &SubprocessTransport{
 			cliPath: "/usr/bin/claude",
@@ -600,19 +602,14 @@ func TestSubprocessTransport_BuildCommand_AllOptions(t *testing.T) {
 
 		cmd := st.buildCommand()
 
-		containsUser := false
-		for i, arg := range cmd {
-			if arg == "--user" && i+1 < len(cmd) && cmd[i+1] == "my-app-user-123" {
-				containsUser = true
-				break
+		for _, arg := range cmd {
+			if arg == "--user" {
+				t.Errorf("command should not contain --user flag, got %v", cmd)
 			}
-		}
-		if !containsUser {
-			t.Errorf("command should contain --user my-app-user-123, got %v", cmd)
 		}
 	})
 
-	t.Run("includes beta flags for each beta", func(t *testing.T) {
+	t.Run("includes betas as single comma-separated flag", func(t *testing.T) {
 		cfg := &config{betas: []string{"context-1m-2025-08-07", "another-beta"}}
 		st := &SubprocessTransport{
 			cliPath: "/usr/bin/claude",
@@ -621,17 +618,19 @@ func TestSubprocessTransport_BuildCommand_AllOptions(t *testing.T) {
 
 		cmd := st.buildCommand()
 
-		betaCount := 0
+		containsBetas := false
 		for i, arg := range cmd {
-			if arg == "--beta" && i+1 < len(cmd) {
-				betaCount++
-				if cmd[i+1] != "context-1m-2025-08-07" && cmd[i+1] != "another-beta" {
-					t.Errorf("unexpected --beta value: %q", cmd[i+1])
+			if arg == "--betas" && i+1 < len(cmd) {
+				containsBetas = true
+				expected := "context-1m-2025-08-07,another-beta"
+				if cmd[i+1] != expected {
+					t.Errorf("--betas value = %q, want %q", cmd[i+1], expected)
 				}
+				break
 			}
 		}
-		if betaCount != 2 {
-			t.Errorf("command should contain 2 --beta flags, got %d", betaCount)
+		if !containsBetas {
+			t.Errorf("command should contain --betas flag, got %v", cmd)
 		}
 	})
 }

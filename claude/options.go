@@ -308,7 +308,10 @@ func WithSettings(path string) Option {
 	}
 }
 
-// WithUser sets a user identifier.
+// WithUser sets the Unix user for subprocess execution.
+// This is for subprocess execution context (reserved for future use),
+// similar to Python SDK's anyio.open_process(user=...).
+// Note: This is NOT passed as a CLI flag.
 func WithUser(user string) Option {
 	return func(c *config) {
 		c.user = user
