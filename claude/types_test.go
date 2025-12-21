@@ -247,12 +247,12 @@ func TestSettingSource_Constants(t *testing.T) {
 func TestPluginConfig_Fields(t *testing.T) {
 	t.Run("can create plugin config with all fields", func(t *testing.T) {
 		plugin := PluginConfig{
-			Type: "local",
+			Type: PluginTypeLocal,
 			Path: "/path/to/plugin",
 		}
 
-		if plugin.Type != "local" {
-			t.Errorf("Type = %q, want %q", plugin.Type, "local")
+		if plugin.Type != PluginTypeLocal {
+			t.Errorf("Type = %q, want %q", plugin.Type, PluginTypeLocal)
 		}
 		if plugin.Path != "/path/to/plugin" {
 			t.Errorf("Path = %q, want %q", plugin.Path, "/path/to/plugin")

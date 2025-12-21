@@ -1229,7 +1229,7 @@ func TestBuildCommand_WithPlugins(t *testing.T) {
 	t.Run("includes single plugin as path", func(t *testing.T) {
 		cfg := &config{
 			plugins: []PluginConfig{
-				{Type: "local", Path: "/path/to/plugin"},
+				{Type: PluginTypeLocal, Path: "/path/to/plugin"},
 			},
 		}
 		st := &SubprocessTransport{
@@ -1259,8 +1259,8 @@ func TestBuildCommand_WithPlugins(t *testing.T) {
 	t.Run("includes multiple plugins", func(t *testing.T) {
 		cfg := &config{
 			plugins: []PluginConfig{
-				{Type: "local", Path: "/path/to/plugin1"},
-				{Type: "local", Path: "/path/to/plugin2"},
+				{Type: PluginTypeLocal, Path: "/path/to/plugin1"},
+				{Type: PluginTypeLocal, Path: "/path/to/plugin2"},
 			},
 		}
 		st := &SubprocessTransport{
@@ -1300,7 +1300,7 @@ func TestBuildCommand_WithPlugins(t *testing.T) {
 	t.Run("only includes local plugins", func(t *testing.T) {
 		cfg := &config{
 			plugins: []PluginConfig{
-				{Type: "local", Path: "/path/to/plugin1"},
+				{Type: PluginTypeLocal, Path: "/path/to/plugin1"},
 				{Type: "remote", Path: "https://example.com/plugin"}, // Should be skipped
 			},
 		}

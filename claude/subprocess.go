@@ -210,7 +210,7 @@ func (st *SubprocessTransport) addAdvancedOptions(cmd []string, cfg *config) []s
 
 	// Add plugin directories (matching Python SDK)
 	for _, plugin := range cfg.plugins {
-		if plugin.Type == "local" {
+		if plugin.Type == PluginTypeLocal {
 			cmd = append(cmd, "--plugin-dir", plugin.Path)
 		}
 	}

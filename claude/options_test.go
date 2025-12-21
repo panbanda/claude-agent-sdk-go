@@ -478,13 +478,13 @@ func TestWithSettingSources(t *testing.T) {
 func TestWithPlugins(t *testing.T) {
 	t.Run("sets single plugin", func(t *testing.T) {
 		cfg := &config{}
-		applyOptions(cfg, WithPlugins(PluginConfig{Type: "local", Path: "/path/to/plugin"}))
+		applyOptions(cfg, WithPlugins(PluginConfig{Type: PluginTypeLocal, Path: "/path/to/plugin"}))
 
 		if len(cfg.plugins) != 1 {
 			t.Fatalf("plugins length = %d, want 1", len(cfg.plugins))
 		}
-		if cfg.plugins[0].Type != "local" {
-			t.Errorf("plugins[0].Type = %q, want %q", cfg.plugins[0].Type, "local")
+		if cfg.plugins[0].Type != PluginTypeLocal {
+			t.Errorf("plugins[0].Type = %q, want %q", cfg.plugins[0].Type, PluginTypeLocal)
 		}
 		if cfg.plugins[0].Path != "/path/to/plugin" {
 			t.Errorf("plugins[0].Path = %q, want %q", cfg.plugins[0].Path, "/path/to/plugin")
@@ -494,8 +494,8 @@ func TestWithPlugins(t *testing.T) {
 	t.Run("sets multiple plugins", func(t *testing.T) {
 		cfg := &config{}
 		applyOptions(cfg, WithPlugins(
-			PluginConfig{Type: "local", Path: "/path/to/plugin1"},
-			PluginConfig{Type: "local", Path: "/path/to/plugin2"},
+			PluginConfig{Type: PluginTypeLocal, Path: "/path/to/plugin1"},
+			PluginConfig{Type: PluginTypeLocal, Path: "/path/to/plugin2"},
 		))
 
 		if len(cfg.plugins) != 2 {

@@ -99,10 +99,18 @@ const (
 	SettingSourceLocal SettingSource = "local"
 )
 
+// PluginType specifies the type of plugin.
+type PluginType string
+
+const (
+	// PluginTypeLocal is a local plugin loaded from a directory.
+	PluginTypeLocal PluginType = "local"
+)
+
 // PluginConfig configures a plugin to load.
 type PluginConfig struct {
 	// Type is the plugin type. Currently only "local" is supported.
-	Type string
+	Type PluginType
 
 	// Path is the path to the plugin directory.
 	Path string
