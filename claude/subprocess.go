@@ -14,6 +14,9 @@ import (
 	"sync"
 )
 
+// osWindows is the GOOS value for Windows.
+const osWindows = "windows"
+
 // SubprocessTransport implements Transport using the Claude CLI subprocess.
 type SubprocessTransport struct {
 	cliPath  string
@@ -62,7 +65,7 @@ func FindCLI() (string, error) {
 	}
 
 	// On Windows, also check for .exe
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == osWindows {
 		for i, loc := range locations {
 			locations[i] = loc + ".exe"
 		}

@@ -10,7 +10,7 @@ pre-commit:
       stage_fixed: true
     lint:
       glob: "*.go"
-      run: golangci-lint run --fix ./...
+      run: docker run --rm -v $(pwd):/app -w /app golangci/golangci-lint:v2.7.2 golangci-lint run --fix ./...
       stage_fixed: true
 
 pre-push:
