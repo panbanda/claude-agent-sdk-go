@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -768,7 +769,7 @@ func TestFindCLI_FallbackLocations(t *testing.T) {
 }
 
 func TestBuildCommand_WithOutputFormat(t *testing.T) {
-	t.Run("includes output format flag", func(t *testing.T) {
+	t.Run("includes json-schema flag with schema only", func(t *testing.T) {
 		cfg := &config{
 			outputFormat: &OutputFormat{
 				Type: "json_schema",
@@ -784,15 +785,45 @@ func TestBuildCommand_WithOutputFormat(t *testing.T) {
 
 		cmd := st.buildCommand()
 
-		containsOutputFormat := false
+		containsJSONSchema := false
+		var schemaValue string
 		for i, arg := range cmd {
-			if arg == "--output-format" && i+1 < len(cmd) {
-				containsOutputFormat = true
+			if arg == "--json-schema" && i+1 < len(cmd) {
+				containsJSONSchema = true
+				schemaValue = cmd[i+1]
 				break
 			}
 		}
-		if !containsOutputFormat {
-			t.Errorf("command should contain --output-format flag, got %v", cmd)
+		if !containsJSONSchema {
+			t.Errorf("command should contain --json-schema flag, got %v", cmd)
+		}
+		// Verify it contains only the schema, not the full output format
+		if strings.Contains(schemaValue, "json_schema") {
+			t.Errorf("--json-schema should contain only schema, not type, got %v", schemaValue)
+		}
+		if !strings.Contains(schemaValue, `"type":"object"`) {
+			t.Errorf("--json-schema should contain schema content, got %v", schemaValue)
+		}
+	})
+
+	t.Run("skips json-schema for unsupported types", func(t *testing.T) {
+		cfg := &config{
+			outputFormat: &OutputFormat{
+				Type:   "unsupported",
+				Schema: map[string]any{"type": "object"},
+			},
+		}
+		st := &SubprocessTransport{
+			cliPath: "/usr/bin/claude",
+			cfg:     cfg,
+		}
+
+		cmd := st.buildCommand()
+
+		for _, arg := range cmd {
+			if arg == "--json-schema" {
+				t.Errorf("command should not contain --json-schema for unsupported type, got %v", cmd)
+			}
 		}
 	})
 }

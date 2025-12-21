@@ -178,10 +178,11 @@ func (st *SubprocessTransport) addAdvancedOptions(cmd []string, cfg *config) []s
 
 // addOutputOptions adds output format and streaming options.
 func (st *SubprocessTransport) addOutputOptions(cmd []string, cfg *config) []string {
-	if cfg.outputFormat != nil {
-		formatJSON, err := json.Marshal(cfg.outputFormat)
+	// Extract schema from output_format and pass as --json-schema (matching Python SDK)
+	if cfg.outputFormat != nil && cfg.outputFormat.Type == "json_schema" && cfg.outputFormat.Schema != nil {
+		schemaJSON, err := json.Marshal(cfg.outputFormat.Schema)
 		if err == nil {
-			cmd = append(cmd, "--output-format", string(formatJSON))
+			cmd = append(cmd, "--json-schema", string(schemaJSON))
 		}
 	}
 	if cfg.includePartialMessages {
