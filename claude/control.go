@@ -24,6 +24,9 @@ const (
 	// ControlSubtypeSetPermissionMode changes the permission mode.
 	ControlSubtypeSetPermissionMode ControlRequestSubtype = "set_permission_mode"
 
+	// ControlSubtypeSetModel changes the AI model.
+	ControlSubtypeSetModel ControlRequestSubtype = "set_model"
+
 	// ControlSubtypeHookCallback handles a hook callback.
 	ControlSubtypeHookCallback ControlRequestSubtype = "hook_callback"
 
@@ -57,6 +60,9 @@ type ControlRequestBody struct {
 
 	// For set_permission_mode
 	Mode string `json:"mode,omitempty"`
+
+	// For set_model
+	Model *string `json:"model,omitempty"`
 
 	// For hook_callback
 	CallbackID string `json:"callback_id,omitempty"`
@@ -180,6 +186,24 @@ func NewSetPermissionModeRequest(mode PermissionMode) *ControlRequest {
 		Request: &ControlRequestBody{
 			Subtype: ControlSubtypeSetPermissionMode,
 			Mode:    string(mode),
+		},
+	}
+}
+
+// NewSetModelRequest creates a set model request.
+// Pass empty string to use the default model.
+func NewSetModelRequest(model string) *ControlRequest {
+	var modelPtr *string
+	if model != "" {
+		modelPtr = &model
+	}
+
+	return &ControlRequest{
+		Type:      MessageTypeControlRequest,
+		RequestID: generateRequestID(),
+		Request: &ControlRequestBody{
+			Subtype: ControlSubtypeSetModel,
+			Model:   modelPtr,
 		},
 	}
 }

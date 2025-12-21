@@ -856,3 +856,207 @@ func TestClientHandleControlRequestMalformed(t *testing.T) {
 		}
 	})
 }
+
+func TestClient_Interrupt(t *testing.T) {
+	t.Run("sends interrupt control request", func(t *testing.T) {
+		mt := newMockTransport()
+		client := NewClient(WithTransport(mt))
+		_ = client.Connect(context.Background())
+
+		err := client.Interrupt(context.Background())
+
+		if err != nil {
+			t.Errorf("Interrupt() error = %v, want nil", err)
+		}
+		if len(mt.sentMessages) != 1 {
+			t.Fatalf("sentMessages length = %d, want 1", len(mt.sentMessages))
+		}
+
+		var msg map[string]any
+		if err := json.Unmarshal(mt.sentMessages[0], &msg); err != nil {
+			t.Fatalf("failed to unmarshal sent message: %v", err)
+		}
+		if msg["type"] != MessageTypeControlRequest {
+			t.Errorf("message type = %v, want %v", msg["type"], MessageTypeControlRequest)
+		}
+		request, _ := msg["request"].(map[string]any)
+		if request["subtype"] != string(ControlSubtypeInterrupt) {
+			t.Errorf("request subtype = %v, want %v", request["subtype"], ControlSubtypeInterrupt)
+		}
+	})
+}
+
+func TestClient_Interrupt_NotConnected(t *testing.T) {
+	t.Run("fails when not connected", func(t *testing.T) {
+		client := NewClient()
+
+		err := client.Interrupt(context.Background())
+
+		if !errors.Is(err, ErrNotConnected) {
+			t.Errorf("Interrupt() error = %v, want %v", err, ErrNotConnected)
+		}
+	})
+}
+
+func TestClient_SetPermissionMode(t *testing.T) {
+	t.Run("sends set permission mode control request", func(t *testing.T) {
+		mt := newMockTransport()
+		client := NewClient(WithTransport(mt))
+		_ = client.Connect(context.Background())
+
+		err := client.SetPermissionMode(context.Background(), PermissionAcceptEdits)
+
+		if err != nil {
+			t.Errorf("SetPermissionMode() error = %v, want nil", err)
+		}
+		if len(mt.sentMessages) != 1 {
+			t.Fatalf("sentMessages length = %d, want 1", len(mt.sentMessages))
+		}
+
+		var msg map[string]any
+		if err := json.Unmarshal(mt.sentMessages[0], &msg); err != nil {
+			t.Fatalf("failed to unmarshal sent message: %v", err)
+		}
+		if msg["type"] != MessageTypeControlRequest {
+			t.Errorf("message type = %v, want %v", msg["type"], MessageTypeControlRequest)
+		}
+		request, _ := msg["request"].(map[string]any)
+		if request["subtype"] != string(ControlSubtypeSetPermissionMode) {
+			t.Errorf("request subtype = %v, want %v", request["subtype"], ControlSubtypeSetPermissionMode)
+		}
+		if request["mode"] != string(PermissionAcceptEdits) {
+			t.Errorf("request mode = %v, want %v", request["mode"], PermissionAcceptEdits)
+		}
+	})
+}
+
+func TestClient_SetPermissionMode_NotConnected(t *testing.T) {
+	t.Run("fails when not connected", func(t *testing.T) {
+		client := NewClient()
+
+		err := client.SetPermissionMode(context.Background(), PermissionDefault)
+
+		if !errors.Is(err, ErrNotConnected) {
+			t.Errorf("SetPermissionMode() error = %v, want %v", err, ErrNotConnected)
+		}
+	})
+}
+
+func TestClient_SetModel(t *testing.T) {
+	t.Run("sends set model control request", func(t *testing.T) {
+		mt := newMockTransport()
+		client := NewClient(WithTransport(mt))
+		_ = client.Connect(context.Background())
+
+		err := client.SetModel(context.Background(), "claude-sonnet-4-5")
+
+		if err != nil {
+			t.Errorf("SetModel() error = %v, want nil", err)
+		}
+		if len(mt.sentMessages) != 1 {
+			t.Fatalf("sentMessages length = %d, want 1", len(mt.sentMessages))
+		}
+
+		var msg map[string]any
+		if err := json.Unmarshal(mt.sentMessages[0], &msg); err != nil {
+			t.Fatalf("failed to unmarshal sent message: %v", err)
+		}
+		if msg["type"] != MessageTypeControlRequest {
+			t.Errorf("message type = %v, want %v", msg["type"], MessageTypeControlRequest)
+		}
+		request, _ := msg["request"].(map[string]any)
+		if request["subtype"] != string(ControlSubtypeSetModel) {
+			t.Errorf("request subtype = %v, want %v", request["subtype"], ControlSubtypeSetModel)
+		}
+		if request["model"] != "claude-sonnet-4-5" {
+			t.Errorf("request model = %v, want 'claude-sonnet-4-5'", request["model"])
+		}
+	})
+}
+
+func TestClient_SetModel_EmptyString(t *testing.T) {
+	t.Run("sends nil model for empty string", func(t *testing.T) {
+		mt := newMockTransport()
+		client := NewClient(WithTransport(mt))
+		_ = client.Connect(context.Background())
+
+		err := client.SetModel(context.Background(), "")
+
+		if err != nil {
+			t.Errorf("SetModel() error = %v, want nil", err)
+		}
+		if len(mt.sentMessages) != 1 {
+			t.Fatalf("sentMessages length = %d, want 1", len(mt.sentMessages))
+		}
+
+		var msg map[string]any
+		if err := json.Unmarshal(mt.sentMessages[0], &msg); err != nil {
+			t.Fatalf("failed to unmarshal sent message: %v", err)
+		}
+		request, _ := msg["request"].(map[string]any)
+		if _, hasModel := request["model"]; hasModel {
+			t.Errorf("request should not have model field for empty string, got %v", request["model"])
+		}
+	})
+}
+
+func TestClient_SetModel_NotConnected(t *testing.T) {
+	t.Run("fails when not connected", func(t *testing.T) {
+		client := NewClient()
+
+		err := client.SetModel(context.Background(), "claude-sonnet-4-5")
+
+		if !errors.Is(err, ErrNotConnected) {
+			t.Errorf("SetModel() error = %v, want %v", err, ErrNotConnected)
+		}
+	})
+}
+
+func TestClient_GetServerInfo(t *testing.T) {
+	t.Run("returns nil when no server info captured", func(t *testing.T) {
+		client := NewClient()
+
+		info := client.GetServerInfo()
+
+		if info != nil {
+			t.Errorf("GetServerInfo() = %v, want nil", info)
+		}
+	})
+}
+
+func TestClient_GetServerInfo_CapturedFromInit(t *testing.T) {
+	t.Run("returns server info from init message", func(t *testing.T) {
+		mt := newMockTransport()
+		client := NewClient(WithTransport(mt))
+		_ = client.Connect(context.Background())
+		defer client.Close()
+
+		initMsg := map[string]any{
+			"type":    "system",
+			"subtype": "init",
+			"data": map[string]any{
+				"slash_commands": []string{"/help", "/commit"},
+				"output_styles":  []string{"default", "verbose"},
+			},
+		}
+		msgBytes, _ := json.Marshal(initMsg)
+		mt.QueueMessage(msgBytes)
+		mt.CloseMessages()
+
+		// Read the message to trigger parsing
+		<-client.Messages()
+
+		info := client.GetServerInfo()
+		if info == nil {
+			t.Fatal("GetServerInfo() = nil, want non-nil")
+		}
+		commands, _ := info["slash_commands"].([]any)
+		if len(commands) != 2 {
+			t.Errorf("slash_commands length = %d, want 2", len(commands))
+		}
+		styles, _ := info["output_styles"].([]any)
+		if len(styles) != 2 {
+			t.Errorf("output_styles length = %d, want 2", len(styles))
+		}
+	})
+}

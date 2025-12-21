@@ -12,6 +12,7 @@ func TestControlRequestSubtype(t *testing.T) {
 			ControlSubtypeCanUseTool,
 			ControlSubtypeInitialize,
 			ControlSubtypeSetPermissionMode,
+			ControlSubtypeSetModel,
 			ControlSubtypeHookCallback,
 			ControlSubtypeMcpMessage,
 			ControlSubtypeRewindFiles,
@@ -522,6 +523,111 @@ func TestNewSetPermissionModeRequest(t *testing.T) {
 
 		if req.Request.Mode != string(PermissionAcceptEdits) {
 			t.Errorf("Mode = %q, want '%s'", req.Request.Mode, PermissionAcceptEdits)
+		}
+	})
+}
+
+func TestControlRequest_Interrupt(t *testing.T) {
+	t.Run("interrupt request marshals correctly", func(t *testing.T) {
+		req := NewInterruptRequest()
+
+		data, err := json.Marshal(req)
+		if err != nil {
+			t.Fatalf("Marshal error: %v", err)
+		}
+
+		var result map[string]any
+		if err := json.Unmarshal(data, &result); err != nil {
+			t.Fatalf("Unmarshal error: %v", err)
+		}
+
+		if result["type"] != MessageTypeControlRequest {
+			t.Errorf("type = %v, want %v", result["type"], MessageTypeControlRequest)
+		}
+
+		request, _ := result["request"].(map[string]any)
+		if request["subtype"] != string(ControlSubtypeInterrupt) {
+			t.Errorf("subtype = %v, want %v", request["subtype"], ControlSubtypeInterrupt)
+		}
+	})
+}
+
+func TestControlRequest_SetPermissionMode(t *testing.T) {
+	t.Run("set permission mode request marshals correctly", func(t *testing.T) {
+		req := NewSetPermissionModeRequest(PermissionAcceptEdits)
+
+		data, err := json.Marshal(req)
+		if err != nil {
+			t.Fatalf("Marshal error: %v", err)
+		}
+
+		var result map[string]any
+		if err := json.Unmarshal(data, &result); err != nil {
+			t.Fatalf("Unmarshal error: %v", err)
+		}
+
+		if result["type"] != MessageTypeControlRequest {
+			t.Errorf("type = %v, want %v", result["type"], MessageTypeControlRequest)
+		}
+
+		request, _ := result["request"].(map[string]any)
+		if request["subtype"] != string(ControlSubtypeSetPermissionMode) {
+			t.Errorf("subtype = %v, want %v", request["subtype"], ControlSubtypeSetPermissionMode)
+		}
+		if request["mode"] != string(PermissionAcceptEdits) {
+			t.Errorf("mode = %v, want %v", request["mode"], PermissionAcceptEdits)
+		}
+	})
+}
+
+func TestControlRequest_SetModel(t *testing.T) {
+	t.Run("set model request with model name", func(t *testing.T) {
+		req := NewSetModelRequest("claude-sonnet-4-5")
+
+		data, err := json.Marshal(req)
+		if err != nil {
+			t.Fatalf("Marshal error: %v", err)
+		}
+
+		var result map[string]any
+		if err := json.Unmarshal(data, &result); err != nil {
+			t.Fatalf("Unmarshal error: %v", err)
+		}
+
+		if result["type"] != MessageTypeControlRequest {
+			t.Errorf("type = %v, want %v", result["type"], MessageTypeControlRequest)
+		}
+
+		request, _ := result["request"].(map[string]any)
+		if request["subtype"] != string(ControlSubtypeSetModel) {
+			t.Errorf("subtype = %v, want %v", request["subtype"], ControlSubtypeSetModel)
+		}
+		if request["model"] != "claude-sonnet-4-5" {
+			t.Errorf("model = %v, want 'claude-sonnet-4-5'", request["model"])
+		}
+	})
+}
+
+func TestControlRequest_SetModel_Nil(t *testing.T) {
+	t.Run("set model request with empty string uses nil", func(t *testing.T) {
+		req := NewSetModelRequest("")
+
+		data, err := json.Marshal(req)
+		if err != nil {
+			t.Fatalf("Marshal error: %v", err)
+		}
+
+		var result map[string]any
+		if err := json.Unmarshal(data, &result); err != nil {
+			t.Fatalf("Unmarshal error: %v", err)
+		}
+
+		request, _ := result["request"].(map[string]any)
+		if request["subtype"] != string(ControlSubtypeSetModel) {
+			t.Errorf("subtype = %v, want %v", request["subtype"], ControlSubtypeSetModel)
+		}
+		if _, hasModel := request["model"]; hasModel {
+			t.Errorf("model field should be omitted for empty string, got %v", request["model"])
 		}
 	})
 }
