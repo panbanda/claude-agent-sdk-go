@@ -309,7 +309,9 @@ func TestSubprocessTransport_BuildCommand(t *testing.T) {
 		}
 	})
 
-	t.Run("includes enable file checkpointing flag", func(t *testing.T) {
+	t.Run("file checkpointing not in CLI args", func(t *testing.T) {
+		// File checkpointing is enabled via environment variable in Connect(),
+		// not as a CLI flag (matching Python SDK behavior).
 		cfg := &config{enableFileCheckpointing: true}
 		st := &SubprocessTransport{
 			cliPath: "/usr/bin/claude",
@@ -318,15 +320,10 @@ func TestSubprocessTransport_BuildCommand(t *testing.T) {
 
 		cmd := st.buildCommand()
 
-		containsCheckpointing := false
 		for _, arg := range cmd {
 			if arg == "--enable-file-checkpointing" {
-				containsCheckpointing = true
-				break
+				t.Errorf("command should NOT contain --enable-file-checkpointing flag, got %v", cmd)
 			}
-		}
-		if !containsCheckpointing {
-			t.Errorf("command should contain --enable-file-checkpointing, got %v", cmd)
 		}
 	})
 }
