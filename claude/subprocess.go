@@ -83,72 +83,90 @@ func FindCLI() (string, error) {
 // buildCommand constructs the CLI command with arguments.
 func (st *SubprocessTransport) buildCommand() []string {
 	cmd := []string{st.cliPath, "--output-format", "stream-json", "--verbose"}
-
 	cfg := st.cfg
 
-	// System prompt
-	if cfg.systemPrompt != "" {
-		cmd = append(cmd, "--system-prompt", cfg.systemPrompt)
-	}
-
-	// Model
-	if cfg.model != "" {
-		cmd = append(cmd, "--model", cfg.model)
-	}
-
-	// Fallback model
-	if cfg.fallbackModel != "" {
-		cmd = append(cmd, "--fallback-model", cfg.fallbackModel)
-	}
-
-	// Max turns
-	if cfg.maxTurns > 0 {
-		cmd = append(cmd, "--max-turns", strconv.Itoa(cfg.maxTurns))
-	}
-
-	// Max budget
-	if cfg.maxBudgetUSD > 0 {
-		cmd = append(cmd, "--max-budget-usd", strconv.FormatFloat(cfg.maxBudgetUSD, 'f', -1, 64))
-	}
-
-	// Permission mode
-	if cfg.permissionMode != "" {
-		cmd = append(cmd, "--permission-mode", string(cfg.permissionMode))
-	}
-
-	// Allowed tools
-	if len(cfg.allowedTools) > 0 {
-		cmd = append(cmd, "--allowedTools", strings.Join(cfg.allowedTools, ","))
-	}
-
-	// Disallowed tools
-	if len(cfg.disallowedTools) > 0 {
-		cmd = append(cmd, "--disallowedTools", strings.Join(cfg.disallowedTools, ","))
-	}
-
-	// Continue conversation
-	if cfg.continueConversation {
-		cmd = append(cmd, "--continue")
-	}
-
-	// Resume session
-	if cfg.resume != "" {
-		cmd = append(cmd, "--resume", cfg.resume)
-	}
-
-	// Max thinking tokens
-	if cfg.maxThinkingTokens > 0 {
-		cmd = append(cmd, "--max-thinking-tokens", strconv.Itoa(cfg.maxThinkingTokens))
-	}
-
-	// MCP config
-	if cfg.mcpConfig != "" {
-		cmd = append(cmd, "--mcp-config", cfg.mcpConfig)
-	}
+	cmd = st.addBasicOptions(cmd, cfg)
+	cmd = st.addToolOptions(cmd, cfg)
+	cmd = st.addSessionOptions(cmd, cfg)
+	cmd = st.addAdvancedOptions(cmd, cfg)
 
 	// Streaming mode: use --input-format stream-json
 	cmd = append(cmd, "--input-format", "stream-json")
 
+	return cmd
+}
+
+// addBasicOptions adds basic configuration options.
+func (st *SubprocessTransport) addBasicOptions(cmd []string, cfg *config) []string {
+	if cfg.systemPrompt != "" {
+		cmd = append(cmd, "--system-prompt", cfg.systemPrompt)
+	}
+	if cfg.model != "" {
+		cmd = append(cmd, "--model", cfg.model)
+	}
+	if cfg.fallbackModel != "" {
+		cmd = append(cmd, "--fallback-model", cfg.fallbackModel)
+	}
+	if cfg.maxTurns > 0 {
+		cmd = append(cmd, "--max-turns", strconv.Itoa(cfg.maxTurns))
+	}
+	if cfg.maxBudgetUSD > 0 {
+		cmd = append(cmd, "--max-budget-usd", strconv.FormatFloat(cfg.maxBudgetUSD, 'f', -1, 64))
+	}
+	return cmd
+}
+
+// addToolOptions adds tool and permission configuration options.
+func (st *SubprocessTransport) addToolOptions(cmd []string, cfg *config) []string {
+	if cfg.permissionMode != "" {
+		cmd = append(cmd, "--permission-mode", string(cfg.permissionMode))
+	}
+	if len(cfg.allowedTools) > 0 {
+		cmd = append(cmd, "--allowedTools", strings.Join(cfg.allowedTools, ","))
+	}
+	if len(cfg.disallowedTools) > 0 {
+		cmd = append(cmd, "--disallowedTools", strings.Join(cfg.disallowedTools, ","))
+	}
+	return cmd
+}
+
+// addSessionOptions adds session and thinking configuration options.
+func (st *SubprocessTransport) addSessionOptions(cmd []string, cfg *config) []string {
+	if cfg.continueConversation {
+		cmd = append(cmd, "--continue")
+	}
+	if cfg.resume != "" {
+		cmd = append(cmd, "--resume", cfg.resume)
+	}
+	if cfg.maxThinkingTokens > 0 {
+		cmd = append(cmd, "--max-thinking-tokens", strconv.Itoa(cfg.maxThinkingTokens))
+	}
+	if cfg.mcpConfig != "" {
+		cmd = append(cmd, "--mcp-config", cfg.mcpConfig)
+	}
+	return cmd
+}
+
+// addAdvancedOptions adds extra args, directories, settings, and betas.
+func (st *SubprocessTransport) addAdvancedOptions(cmd []string, cfg *config) []string {
+	for key, value := range cfg.extraArgs {
+		if value == "" {
+			cmd = append(cmd, "--"+key)
+		} else {
+			cmd = append(cmd, "--"+key, value)
+		}
+	}
+	for _, dir := range cfg.addDirs {
+		cmd = append(cmd, "--add-dir", dir)
+	}
+	if cfg.settings != "" {
+		cmd = append(cmd, "--settings", cfg.settings)
+	}
+	// Note: cfg.user is for subprocess execution context (reserved for future use),
+	// not a CLI flag. Python SDK passes it to anyio.open_process(user=...).
+	if len(cfg.betas) > 0 {
+		cmd = append(cmd, "--betas", strings.Join(cfg.betas, ","))
+	}
 	return cmd
 }
 
@@ -222,7 +240,10 @@ func (st *SubprocessTransport) readMessages(stdout interface{ Read([]byte) (int,
 
 	scanner := bufio.NewScanner(stdout)
 	// Set a larger buffer for potentially large JSON messages
-	const maxScanTokenSize = 1024 * 1024 // 1MB
+	maxScanTokenSize := 1024 * 1024 // 1MB default
+	if st.cfg.maxBufferSize > 0 {
+		maxScanTokenSize = st.cfg.maxBufferSize
+	}
 	buf := make([]byte, maxScanTokenSize)
 	scanner.Buffer(buf, maxScanTokenSize)
 

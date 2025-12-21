@@ -516,6 +516,123 @@ func TestSubprocessTransport_BuildCommand_AllOptions(t *testing.T) {
 			t.Errorf("command should contain --max-thinking-tokens 50000, got %v", cmd)
 		}
 	})
+
+	t.Run("includes extra args flags", func(t *testing.T) {
+		cfg := &config{extraArgs: map[string]string{
+			"verbose":       "",
+			"output-format": "json",
+		}}
+		st := &SubprocessTransport{
+			cliPath: "/usr/bin/claude",
+			cfg:     cfg,
+		}
+
+		cmd := st.buildCommand()
+
+		containsVerbose := false
+		containsOutputFormat := false
+		for i, arg := range cmd {
+			if arg == "--verbose" {
+				containsVerbose = true
+			}
+			if arg == "--output-format" && i+1 < len(cmd) && cmd[i+1] == "json" {
+				containsOutputFormat = true
+			}
+		}
+		if !containsVerbose {
+			t.Errorf("command should contain --verbose, got %v", cmd)
+		}
+		if !containsOutputFormat {
+			t.Errorf("command should contain --output-format json, got %v", cmd)
+		}
+	})
+
+	t.Run("includes add-dir flags for each directory", func(t *testing.T) {
+		cfg := &config{addDirs: []string{"/path/to/dir1", "/path/to/dir2"}}
+		st := &SubprocessTransport{
+			cliPath: "/usr/bin/claude",
+			cfg:     cfg,
+		}
+
+		cmd := st.buildCommand()
+
+		addDirCount := 0
+		for i, arg := range cmd {
+			if arg == "--add-dir" && i+1 < len(cmd) {
+				addDirCount++
+				if cmd[i+1] != "/path/to/dir1" && cmd[i+1] != "/path/to/dir2" {
+					t.Errorf("unexpected --add-dir value: %q", cmd[i+1])
+				}
+			}
+		}
+		if addDirCount != 2 {
+			t.Errorf("command should contain 2 --add-dir flags, got %d", addDirCount)
+		}
+	})
+
+	t.Run("includes settings flag when set", func(t *testing.T) {
+		cfg := &config{settings: "/path/to/settings.json"}
+		st := &SubprocessTransport{
+			cliPath: "/usr/bin/claude",
+			cfg:     cfg,
+		}
+
+		cmd := st.buildCommand()
+
+		containsSettings := false
+		for i, arg := range cmd {
+			if arg == "--settings" && i+1 < len(cmd) && cmd[i+1] == "/path/to/settings.json" {
+				containsSettings = true
+				break
+			}
+		}
+		if !containsSettings {
+			t.Errorf("command should contain --settings /path/to/settings.json, got %v", cmd)
+		}
+	})
+
+	t.Run("user option does not become CLI flag", func(t *testing.T) {
+		// User option is for subprocess execution context (like Python's anyio.open_process),
+		// not a CLI flag. Verify it's not passed to the command.
+		cfg := &config{user: "my-app-user-123"}
+		st := &SubprocessTransport{
+			cliPath: "/usr/bin/claude",
+			cfg:     cfg,
+		}
+
+		cmd := st.buildCommand()
+
+		for _, arg := range cmd {
+			if arg == "--user" {
+				t.Errorf("command should not contain --user flag, got %v", cmd)
+			}
+		}
+	})
+
+	t.Run("includes betas as single comma-separated flag", func(t *testing.T) {
+		cfg := &config{betas: []string{"context-1m-2025-08-07", "another-beta"}}
+		st := &SubprocessTransport{
+			cliPath: "/usr/bin/claude",
+			cfg:     cfg,
+		}
+
+		cmd := st.buildCommand()
+
+		containsBetas := false
+		for i, arg := range cmd {
+			if arg == "--betas" && i+1 < len(cmd) {
+				containsBetas = true
+				expected := "context-1m-2025-08-07,another-beta"
+				if cmd[i+1] != expected {
+					t.Errorf("--betas value = %q, want %q", cmd[i+1], expected)
+				}
+				break
+			}
+		}
+		if !containsBetas {
+			t.Errorf("command should contain --betas flag, got %v", cmd)
+		}
+	})
 }
 
 func TestSubprocessTransport_ReadMessages(t *testing.T) {
