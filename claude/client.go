@@ -4,6 +4,7 @@ package claude
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"sync"
 )
 
@@ -484,6 +485,59 @@ func (c *Client) GetServerInfo() map[string]any {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.serverInfo
+}
+
+// RewindFiles restores tracked files to their state at the specified user message.
+//
+// Requirements:
+//   - enableFileCheckpointing must be true
+//   - replay-user-messages extra arg should be set to receive UserMessage UUIDs
+//
+// Args:
+//   - userMessageID: UUID from a UserMessage received during the conversation
+//
+// Example:
+//
+//	client := claude.NewClient(
+//	    claude.WithEnableFileCheckpointing(true),
+//	    claude.WithExtraArgs(map[string]string{"replay-user-messages": ""}),
+//	)
+//
+//	// ... conversation happens, track UserMessage UUIDs ...
+//
+//	// Rewind to a previous state
+//	if err := client.RewindFiles(ctx, checkpointUUID); err != nil {
+//	    return err
+//	}
+func (c *Client) RewindFiles(ctx context.Context, userMessageID string) error {
+	c.mu.RLock()
+	if !c.connected {
+		c.mu.RUnlock()
+		return ErrNotConnected
+	}
+	transport := c.transport
+	c.mu.RUnlock()
+
+	if userMessageID == "" {
+		return fmt.Errorf("userMessageID is required")
+	}
+
+	req := &ControlRequest{
+		Type:      MessageTypeControlRequest,
+		RequestID: generateRequestID(),
+		Request: &ControlRequestBody{
+			Subtype:       ControlSubtypeRewindFiles,
+			UserMessageID: userMessageID,
+		},
+	}
+
+	data, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+	data = append(data, '\n')
+
+	return transport.Send(ctx, data)
 }
 
 // sendInitialize sends an initialize request with hook configurations to the CLI.

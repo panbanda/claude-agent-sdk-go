@@ -192,6 +192,24 @@ func TestOptions(t *testing.T) {
 		}
 	})
 
+	t.Run("WithEnableFileCheckpointing enables checkpointing", func(t *testing.T) {
+		cfg := &config{}
+		applyOptions(cfg, WithEnableFileCheckpointing(true))
+
+		if !cfg.enableFileCheckpointing {
+			t.Error("enableFileCheckpointing should be true")
+		}
+	})
+
+	t.Run("WithEnableFileCheckpointing can disable checkpointing", func(t *testing.T) {
+		cfg := &config{}
+		applyOptions(cfg, WithEnableFileCheckpointing(false))
+
+		if cfg.enableFileCheckpointing {
+			t.Error("enableFileCheckpointing should be false")
+		}
+	})
+
 	t.Run("multiple options compose", func(t *testing.T) {
 		cfg := &config{}
 		applyOptions(cfg,

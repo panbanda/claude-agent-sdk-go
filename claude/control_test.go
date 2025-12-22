@@ -631,3 +631,79 @@ func TestControlRequest_SetModel_Nil(t *testing.T) {
 		}
 	})
 }
+
+func TestControlRequestRewindFiles(t *testing.T) {
+	t.Run("creates and marshals rewind_files request", func(t *testing.T) {
+		req := &ControlRequest{
+			Type:      MessageTypeControlRequest,
+			RequestID: "test-123",
+			Request: &ControlRequestBody{
+				Subtype:       ControlSubtypeRewindFiles,
+				UserMessageID: "msg-uuid-456",
+			},
+		}
+
+		data, err := json.Marshal(req)
+		if err != nil {
+			t.Fatalf("Marshal error: %v", err)
+		}
+
+		var parsed map[string]any
+		if err := json.Unmarshal(data, &parsed); err != nil {
+			t.Fatalf("Unmarshal error: %v", err)
+		}
+
+		if parsed["type"] != MessageTypeControlRequest {
+			t.Errorf("type = %v, want %q", parsed["type"], MessageTypeControlRequest)
+		}
+
+		if parsed["request_id"] != "test-123" {
+			t.Errorf("request_id = %v, want 'test-123'", parsed["request_id"])
+		}
+
+		request, ok := parsed["request"].(map[string]any)
+		if !ok {
+			t.Fatal("request should be a map")
+		}
+
+		if request["subtype"] != string(ControlSubtypeRewindFiles) {
+			t.Errorf("subtype = %v, want %q", request["subtype"], ControlSubtypeRewindFiles)
+		}
+
+		if request["user_message_id"] != "msg-uuid-456" {
+			t.Errorf("user_message_id = %v, want 'msg-uuid-456'", request["user_message_id"])
+		}
+	})
+
+	t.Run("unmarshals rewind_files request", func(t *testing.T) {
+		data := `{
+			"type": "control_request",
+			"request_id": "req-rewind-1",
+			"request": {
+				"subtype": "rewind_files",
+				"user_message_id": "user-msg-uuid-789"
+			}
+		}`
+
+		var req ControlRequest
+		if err := json.Unmarshal([]byte(data), &req); err != nil {
+			t.Fatalf("Unmarshal error: %v", err)
+		}
+
+		if req.Type != MessageTypeControlRequest {
+			t.Errorf("Type = %q, want %q", req.Type, MessageTypeControlRequest)
+		}
+
+		if req.RequestID != "req-rewind-1" {
+			t.Errorf("RequestID = %q, want 'req-rewind-1'", req.RequestID)
+		}
+
+		if req.Request.Subtype != ControlSubtypeRewindFiles {
+			t.Errorf("Subtype = %q, want %q", req.Request.Subtype, ControlSubtypeRewindFiles)
+		}
+
+		if req.Request.UserMessageID != "user-msg-uuid-789" {
+			t.Errorf("UserMessageID = %q, want 'user-msg-uuid-789'", req.Request.UserMessageID)
+		}
+	})
+}

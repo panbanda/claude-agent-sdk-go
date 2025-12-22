@@ -93,6 +93,9 @@ func (st *SubprocessTransport) buildCommand() []string {
 	cmd = st.addOutputOptions(cmd, cfg)
 	cmd = st.addSandboxOptions(cmd, cfg)
 
+	// Note: File checkpointing is enabled via environment variable in Connect(),
+	// not as a CLI flag (matching Python SDK behavior).
+
 	// Streaming mode: use --input-format stream-json
 	cmd = append(cmd, "--input-format", "stream-json")
 
@@ -304,6 +307,11 @@ func (st *SubprocessTransport) Connect(ctx context.Context) error {
 	// Set environment
 	st.cmd.Env = os.Environ()
 	st.cmd.Env = append(st.cmd.Env, "CLAUDE_CODE_ENTRYPOINT=sdk-go")
+
+	// Enable file checkpointing via environment variable (matching Python SDK)
+	if st.cfg.enableFileCheckpointing {
+		st.cmd.Env = append(st.cmd.Env, "CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING=true")
+	}
 
 	if st.cfg.env != nil {
 		for k, v := range st.cfg.env {

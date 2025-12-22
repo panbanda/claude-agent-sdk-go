@@ -1137,3 +1137,73 @@ func TestParseStreamEvent(t *testing.T) {
 		}
 	})
 }
+
+func TestClientRewindFiles(t *testing.T) {
+	t.Run("sends rewind_files control request", func(t *testing.T) {
+		mt := newMockTransport()
+		client := NewClient(WithTransport(mt))
+		_ = client.Connect(context.Background())
+		defer client.Close()
+
+		err := client.RewindFiles(context.Background(), "user-msg-uuid-123")
+
+		if err != nil {
+			t.Errorf("RewindFiles() error = %v, want nil", err)
+		}
+
+		// Verify the control request was sent
+		if len(mt.sentMessages) < 1 {
+			t.Fatalf("expected at least 1 message (rewind), got %d", len(mt.sentMessages))
+		}
+
+		// Check the rewind request (should be the last message)
+		var req map[string]any
+		lastMsg := mt.sentMessages[len(mt.sentMessages)-1]
+		if err := json.Unmarshal(lastMsg, &req); err != nil {
+			t.Fatalf("failed to unmarshal rewind request: %v", err)
+		}
+
+		if req["type"] != MessageTypeControlRequest {
+			t.Errorf("type = %v, want %q", req["type"], MessageTypeControlRequest)
+		}
+
+		request, ok := req["request"].(map[string]any)
+		if !ok {
+			t.Fatal("request field not found or not a map")
+		}
+
+		if request["subtype"] != string(ControlSubtypeRewindFiles) {
+			t.Errorf("subtype = %v, want %q", request["subtype"], ControlSubtypeRewindFiles)
+		}
+
+		if request["user_message_id"] != "user-msg-uuid-123" {
+			t.Errorf("user_message_id = %v, want 'user-msg-uuid-123'", request["user_message_id"])
+		}
+	})
+
+	t.Run("fails when not connected", func(t *testing.T) {
+		client := NewClient()
+
+		err := client.RewindFiles(context.Background(), "some-uuid")
+
+		if !errors.Is(err, ErrNotConnected) {
+			t.Errorf("RewindFiles() error = %v, want %v", err, ErrNotConnected)
+		}
+	})
+
+	t.Run("fails with empty message ID", func(t *testing.T) {
+		mt := newMockTransport()
+		client := NewClient(WithTransport(mt))
+		_ = client.Connect(context.Background())
+		defer client.Close()
+
+		err := client.RewindFiles(context.Background(), "")
+
+		if err == nil {
+			t.Error("RewindFiles() error = nil, want error for empty message ID")
+		}
+		if err != nil && err.Error() != "userMessageID is required" {
+			t.Errorf("RewindFiles() error = %v, want 'userMessageID is required'", err)
+		}
+	})
+}

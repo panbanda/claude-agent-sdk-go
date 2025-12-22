@@ -308,6 +308,24 @@ func TestSubprocessTransport_BuildCommand(t *testing.T) {
 			t.Errorf("command should contain --mcp-config /path/to/mcp-config.json, got %v", cmd)
 		}
 	})
+
+	t.Run("file checkpointing not in CLI args", func(t *testing.T) {
+		// File checkpointing is enabled via environment variable in Connect(),
+		// not as a CLI flag (matching Python SDK behavior).
+		cfg := &config{enableFileCheckpointing: true}
+		st := &SubprocessTransport{
+			cliPath: "/usr/bin/claude",
+			cfg:     cfg,
+		}
+
+		cmd := st.buildCommand()
+
+		for _, arg := range cmd {
+			if arg == "--enable-file-checkpointing" {
+				t.Errorf("command should NOT contain --enable-file-checkpointing flag, got %v", cmd)
+			}
+		}
+	})
 }
 
 func TestSubprocessTransport_Connect(t *testing.T) {
@@ -325,6 +343,51 @@ func TestSubprocessTransport_Connect(t *testing.T) {
 
 		if err == nil {
 			t.Error("Connect() error = nil, want error")
+		}
+	})
+
+	t.Run("sets file checkpointing env var when enabled", func(t *testing.T) {
+		cfg := &config{enableFileCheckpointing: true}
+		st := NewSubprocessTransport(cfg)
+		st.cliPath = "/nonexistent/path/to/claude"
+
+		// Connect will fail, but env is set before the failure
+		_ = st.Connect(context.Background())
+
+		// Check that the cmd was created with the checkpointing env var
+		if st.cmd == nil {
+			t.Fatal("cmd should be set even if Connect fails")
+		}
+
+		found := false
+		for _, env := range st.cmd.Env {
+			if env == "CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING=true" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Error("CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING=true not found in cmd.Env")
+		}
+	})
+
+	t.Run("does not set file checkpointing env var when disabled", func(t *testing.T) {
+		cfg := &config{enableFileCheckpointing: false}
+		st := NewSubprocessTransport(cfg)
+		st.cliPath = "/nonexistent/path/to/claude"
+
+		// Connect will fail, but env is set before the failure
+		_ = st.Connect(context.Background())
+
+		if st.cmd == nil {
+			t.Fatal("cmd should be set even if Connect fails")
+		}
+
+		for _, env := range st.cmd.Env {
+			if env == "CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING=true" {
+				t.Error("CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING should not be set when disabled")
+				break
+			}
 		}
 	})
 }
