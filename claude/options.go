@@ -60,6 +60,15 @@ type config struct {
 	// MCP
 	mcpConfig string
 
+	// Agents
+	agents map[string]AgentDefinition
+
+	// Settings
+	settingSources []SettingSource
+
+	// Plugins
+	plugins []PluginConfig
+
 	// Transport (for testing)
 	transport Transport
 
@@ -376,5 +385,29 @@ func WithIncludePartialMessages(enabled bool) Option {
 func WithForkSession(enabled bool) Option {
 	return func(c *config) {
 		c.forkSession = enabled
+	}
+}
+
+// WithAgents configures custom agent definitions.
+// Agents can be invoked by Claude using the Task tool with the agent name.
+func WithAgents(agents map[string]AgentDefinition) Option {
+	return func(c *config) {
+		c.agents = agents
+	}
+}
+
+// WithSettingSources controls which settings sources are loaded.
+// By default, no settings are loaded for isolation.
+// Use this to load user, project, or local settings.
+func WithSettingSources(sources ...SettingSource) Option {
+	return func(c *config) {
+		c.settingSources = sources
+	}
+}
+
+// WithPlugins configures plugins to load.
+func WithPlugins(plugins ...PluginConfig) Option {
+	return func(c *config) {
+		c.plugins = plugins
 	}
 }

@@ -153,3 +153,120 @@ func TestSandboxIgnoreViolations(t *testing.T) {
 		t.Errorf("expected %d file violations, got %d", len(violations.File), len(decoded.File))
 	}
 }
+
+func TestAgentDefinition_Fields(t *testing.T) {
+	t.Run("can create agent with all fields", func(t *testing.T) {
+		agent := AgentDefinition{
+			Description: "Test agent",
+			Prompt:      "You are a test agent",
+			Tools:       []string{"Read", "Write"},
+			Model:       "sonnet",
+		}
+
+		if agent.Description != "Test agent" {
+			t.Errorf("Description = %q, want %q", agent.Description, "Test agent")
+		}
+		if agent.Prompt != "You are a test agent" {
+			t.Errorf("Prompt = %q, want %q", agent.Prompt, "You are a test agent")
+		}
+		if len(agent.Tools) != 2 {
+			t.Fatalf("Tools length = %d, want 2", len(agent.Tools))
+		}
+		if agent.Tools[0] != "Read" || agent.Tools[1] != "Write" {
+			t.Errorf("Tools = %v, want [Read Write]", agent.Tools)
+		}
+		if agent.Model != "sonnet" {
+			t.Errorf("Model = %q, want %q", agent.Model, "sonnet")
+		}
+	})
+
+	t.Run("can create agent with nil tools", func(t *testing.T) {
+		agent := AgentDefinition{
+			Description: "Test agent",
+			Prompt:      "You are a test agent",
+			Tools:       nil,
+			Model:       "opus",
+		}
+
+		if agent.Tools != nil {
+			t.Errorf("Tools = %v, want nil", agent.Tools)
+		}
+	})
+
+	t.Run("can create agent with empty model", func(t *testing.T) {
+		agent := AgentDefinition{
+			Description: "Test agent",
+			Prompt:      "You are a test agent",
+			Model:       "",
+		}
+
+		if agent.Model != "" {
+			t.Errorf("Model = %q, want empty", agent.Model)
+		}
+	})
+}
+
+func TestSettingSource_Constants(t *testing.T) {
+	t.Run("setting source constants exist", func(t *testing.T) {
+		sources := []SettingSource{
+			SettingSourceUser,
+			SettingSourceProject,
+			SettingSourceLocal,
+		}
+
+		// All sources should be non-empty strings
+		for _, s := range sources {
+			if s == "" {
+				t.Error("SettingSource should not be empty")
+			}
+		}
+
+		// All sources should be distinct
+		seen := make(map[SettingSource]bool)
+		for _, s := range sources {
+			if seen[s] {
+				t.Errorf("duplicate source: %s", s)
+			}
+			seen[s] = true
+		}
+	})
+
+	t.Run("setting source has expected values", func(t *testing.T) {
+		if SettingSourceUser != "user" {
+			t.Errorf("SettingSourceUser = %q, want %q", SettingSourceUser, "user")
+		}
+		if SettingSourceProject != "project" {
+			t.Errorf("SettingSourceProject = %q, want %q", SettingSourceProject, "project")
+		}
+		if SettingSourceLocal != "local" {
+			t.Errorf("SettingSourceLocal = %q, want %q", SettingSourceLocal, "local")
+		}
+	})
+}
+
+func TestPluginConfig_Fields(t *testing.T) {
+	t.Run("can create plugin config with all fields", func(t *testing.T) {
+		plugin := PluginConfig{
+			Type: PluginTypeLocal,
+			Path: "/path/to/plugin",
+		}
+
+		if plugin.Type != PluginTypeLocal {
+			t.Errorf("Type = %q, want %q", plugin.Type, PluginTypeLocal)
+		}
+		if plugin.Path != "/path/to/plugin" {
+			t.Errorf("Path = %q, want %q", plugin.Path, "/path/to/plugin")
+		}
+	})
+
+	t.Run("can create plugin config with empty fields", func(t *testing.T) {
+		plugin := PluginConfig{}
+
+		if plugin.Type != "" {
+			t.Errorf("Type = %q, want empty", plugin.Type)
+		}
+		if plugin.Path != "" {
+			t.Errorf("Path = %q, want empty", plugin.Path)
+		}
+	})
+}
