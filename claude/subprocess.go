@@ -25,6 +25,7 @@ type SubprocessTransport struct {
 	cmd      *exec.Cmd
 	stdin    io.WriteCloser
 	stdout   io.ReadCloser
+	stderr   io.ReadCloser
 	messages chan []byte
 	errors   chan error
 	ready    bool
@@ -330,6 +331,11 @@ func (st *SubprocessTransport) Connect(ctx context.Context) error {
 		return fmt.Errorf("failed to create stdout pipe: %w", err)
 	}
 
+	stderrPipe, err := st.cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("failed to create stderr pipe: %w", err)
+	}
+
 	// Start the process
 	if err := st.cmd.Start(); err != nil {
 		return fmt.Errorf("failed to start claude process: %w", err)
@@ -338,9 +344,15 @@ func (st *SubprocessTransport) Connect(ctx context.Context) error {
 	// Store pipes for writing/reading
 	st.stdin = stdinPipe
 	st.stdout = stdoutPipe
+	st.stderr = stderrPipe
 
 	// Start reading messages
 	go st.readMessages(stdoutPipe)
+
+	// Start stderr reader if callback is configured
+	if st.cfg.stderrCallback != nil {
+		go st.readStderr()
+	}
 
 	st.ready = true
 	return nil
@@ -394,6 +406,17 @@ func (st *SubprocessTransport) readMessages(stdout interface{ Read([]byte) (int,
 	}
 
 	close(st.errors)
+}
+
+// readStderr reads stderr line by line and calls the callback.
+func (st *SubprocessTransport) readStderr() {
+	scanner := bufio.NewScanner(st.stderr)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if st.cfg.stderrCallback != nil {
+			st.cfg.stderrCallback(line)
+		}
+	}
 }
 
 // Send writes data to the subprocess stdin.

@@ -537,6 +537,36 @@ func TestWithPlugins(t *testing.T) {
 	})
 }
 
+func TestWithStderrCallback(t *testing.T) {
+	t.Run("sets stderr callback", func(t *testing.T) {
+		var received []string
+		callback := func(line string) {
+			received = append(received, line)
+		}
+
+		cfg := &config{}
+		applyOptions(cfg, WithStderrCallback(callback))
+
+		if cfg.stderrCallback == nil {
+			t.Error("stderrCallback should not be nil")
+		}
+
+		cfg.stderrCallback("test line")
+		if len(received) != 1 || received[0] != "test line" {
+			t.Errorf("received = %v, want ['test line']", received)
+		}
+	})
+
+	t.Run("accepts nil callback", func(t *testing.T) {
+		cfg := &config{}
+		applyOptions(cfg, WithStderrCallback(nil))
+
+		if cfg.stderrCallback != nil {
+			t.Error("stderrCallback should be nil")
+		}
+	})
+}
+
 // Helper to apply options
 func applyOptions(cfg *config, opts ...Option) {
 	for _, opt := range opts {

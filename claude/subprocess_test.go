@@ -1385,3 +1385,51 @@ func TestBuildCommand_WithPlugins(t *testing.T) {
 		}
 	})
 }
+
+func TestSubprocessTransport_StderrCallback(t *testing.T) {
+	t.Run("captures stderr when callback is set", func(t *testing.T) {
+		var received []string
+		callback := func(line string) {
+			received = append(received, line)
+		}
+
+		cfg := &config{stderrCallback: callback}
+		st := NewSubprocessTransport(cfg)
+
+		r, w, _ := os.Pipe()
+		st.stderr = r
+
+		go func() {
+			w.Write([]byte("test error line 1\n"))
+			w.Write([]byte("test error line 2\n"))
+			w.Close()
+		}()
+
+		st.readStderr()
+
+		if len(received) != 2 {
+			t.Fatalf("got %d stderr lines, want 2", len(received))
+		}
+		if received[0] != "test error line 1" {
+			t.Errorf("received[0] = %q, want 'test error line 1'", received[0])
+		}
+		if received[1] != "test error line 2" {
+			t.Errorf("received[1] = %q, want 'test error line 2'", received[1])
+		}
+	})
+
+	t.Run("handles nil callback gracefully", func(t *testing.T) {
+		cfg := &config{stderrCallback: nil}
+		st := NewSubprocessTransport(cfg)
+
+		r, w, _ := os.Pipe()
+		st.stderr = r
+
+		go func() {
+			w.Write([]byte("test error line\n"))
+			w.Close()
+		}()
+
+		st.readStderr()
+	})
+}

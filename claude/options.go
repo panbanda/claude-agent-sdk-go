@@ -100,6 +100,9 @@ type config struct {
 	sandbox                *SandboxSettings
 	includePartialMessages bool
 	forkSession            bool
+
+	// Callbacks
+	stderrCallback func(string)
 }
 
 // Option is a function that configures the client.
@@ -425,5 +428,17 @@ func WithSettingSources(sources ...SettingSource) Option {
 func WithPlugins(plugins ...PluginConfig) Option {
 	return func(c *config) {
 		c.plugins = plugins
+	}
+}
+
+// StderrCallback is a function that receives each line of stderr output.
+type StderrCallback func(line string)
+
+// WithStderrCallback sets a callback for CLI stderr output.
+// This is useful for capturing debug information when using
+// extra_args like {"debug-to-stderr": ""}.
+func WithStderrCallback(callback StderrCallback) Option {
+	return func(c *config) {
+		c.stderrCallback = callback
 	}
 }
