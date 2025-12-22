@@ -345,6 +345,51 @@ func TestSubprocessTransport_Connect(t *testing.T) {
 			t.Error("Connect() error = nil, want error")
 		}
 	})
+
+	t.Run("sets file checkpointing env var when enabled", func(t *testing.T) {
+		cfg := &config{enableFileCheckpointing: true}
+		st := NewSubprocessTransport(cfg)
+		st.cliPath = "/nonexistent/path/to/claude"
+
+		// Connect will fail, but env is set before the failure
+		_ = st.Connect(context.Background())
+
+		// Check that the cmd was created with the checkpointing env var
+		if st.cmd == nil {
+			t.Fatal("cmd should be set even if Connect fails")
+		}
+
+		found := false
+		for _, env := range st.cmd.Env {
+			if env == "CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING=true" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Error("CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING=true not found in cmd.Env")
+		}
+	})
+
+	t.Run("does not set file checkpointing env var when disabled", func(t *testing.T) {
+		cfg := &config{enableFileCheckpointing: false}
+		st := NewSubprocessTransport(cfg)
+		st.cliPath = "/nonexistent/path/to/claude"
+
+		// Connect will fail, but env is set before the failure
+		_ = st.Connect(context.Background())
+
+		if st.cmd == nil {
+			t.Fatal("cmd should be set even if Connect fails")
+		}
+
+		for _, env := range st.cmd.Env {
+			if env == "CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING=true" {
+				t.Error("CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING should not be set when disabled")
+				break
+			}
+		}
+	})
 }
 
 func TestSubprocessTransport_IsReady(t *testing.T) {
